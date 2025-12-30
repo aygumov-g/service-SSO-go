@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"github.com/aygumov-g/service-SSO-go/internal/app"
+)
 
 func main() {
-	fmt.Println("3")
+	app.Run()
 }
