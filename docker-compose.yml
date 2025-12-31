@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aygumov-g/service-sso-go:latest
+    container_name: service-sso-go
+    environment:
+      - APP_PORT=$APP_PORT
+    ports:
+      - "$APP_PORT:$APP_PORT"
+    restart: always
