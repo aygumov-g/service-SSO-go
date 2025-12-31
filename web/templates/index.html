@@ -3,8 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ .Title }}</title>
+    <link rel="stylesheet" href="/stt/css/style.css">
+    <script src="/stt/js/main.js" defer></script>
 </head>
 <body>
-    <h1>{{ .Message }}</h1>
+    <table class="form-container">
+        <thead>
+            <tr>
+                <td>
+                    <p class="text-form-title">Регистрация</p>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <p class="text-field">Имя пользователя:</p>
+                    <input class="input-field">
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <p class="text-field">Пароль:</p>
+                    <input class="input-field">
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </body>
 </html>
