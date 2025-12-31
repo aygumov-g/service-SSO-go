@@ -10,13 +10,13 @@ import (
 
 func NewRouter(tmpl *template.Template, log *slog.Logger) *chi.Mux {
 	r := chi.NewRouter()
-	h := NewHandler(tmpl)
+	h := newHandler(tmpl)
 
-	r.Use(RequestLogger(log))
+	r.Use(requestLogger(log))
 
 	r.Handle("/stt/*", http.StripPrefix("/stt/", http.FileServer(http.Dir("web/statics"))))
 
-	r.Get("/", h.Index)
+	r.Get("/", h.index)
 
 	return r
 }
