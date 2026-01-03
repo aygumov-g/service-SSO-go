@@ -3,14 +3,18 @@ package config
 import "os"
 
 type Config struct {
-	Port string
+	AppPort string
+	MainDB  Postgres
 }
 
 func Load() *Config {
-	port := os.Getenv("APP_PORT")
-	if port == "" {
-		port = "8080"
+	return &Config{
+		AppPort: os.Getenv("APP_PORT"),
+		MainDB: Postgres{
+			dBHost:     os.Getenv("POSTGRES_HOST"),
+			dBUser:     os.Getenv("POSTGRES_USER"),
+			dBPassword: os.Getenv("POSTGRES_PASSWORD"),
+			dBName:     os.Getenv("POSTGRES_DB"),
+		},
 	}
-
-	return &Config{Port: port}
 }
