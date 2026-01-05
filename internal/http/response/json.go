@@ -15,3 +15,19 @@ func JSON(w http.ResponseWriter, status int, v any) {
 func InternalError(w http.ResponseWriter, v string) {
 	http.Error(w, v, http.StatusInternalServerError)
 }
+
+func BadRequestError(w http.ResponseWriter, v string) {
+	http.Error(w, v, http.StatusBadRequest)
+}
+
+func UnauthorizedError(w http.ResponseWriter, v string) {
+	http.Error(w, v, http.StatusUnauthorized)
+}
+
+func NotFoundError(w http.ResponseWriter, v string) {
+	http.Error(w, v, http.StatusNotFound)
+}
+
+func ConflictError(w http.ResponseWriter, v string) {
+	http.Error(w, v, http.StatusConflict)
+}

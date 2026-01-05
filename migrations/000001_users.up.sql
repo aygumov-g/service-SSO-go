@@ -1,4 +1,5 @@
 CREATE TABLE users (
-    id BIGINT PRIMARY KEY,
-    name TEXT NOT NULL
+    id BIGSERIAL PRIMARY KEY,
+    login TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL
 );

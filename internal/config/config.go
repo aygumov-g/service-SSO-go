@@ -1,10 +1,13 @@
 package config
 
-import "os"
+import (
+	"os"
+)
 
 type Config struct {
 	AppPort string
 	MainDB  Postgres
+	JWT     JWT
 }
 
 func Load() *Config {
@@ -15,6 +18,10 @@ func Load() *Config {
 			dBUser:     os.Getenv("POSTGRES_USER"),
 			dBPassword: os.Getenv("POSTGRES_PASSWORD"),
 			dBName:     os.Getenv("POSTGRES_DB"),
+		},
+		JWT: JWT{
+			Secret: []byte(os.Getenv("JWT_SECRET")),
+			TTL:    TTL(os.Getenv("JWT_TTL")),
 		},
 	}
 }

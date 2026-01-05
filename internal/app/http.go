@@ -1,11 +1,10 @@
 package app
 
 import (
-	"html/template"
 	"net/http"
 
 	"github.com/aygumov-g/service-SSO-go/internal/config"
-	"github.com/aygumov-g/service-SSO-go/internal/domain/user"
+	"github.com/aygumov-g/service-SSO-go/internal/domain/auth"
 	"github.com/aygumov-g/service-SSO-go/internal/http/handler"
 	"github.com/aygumov-g/service-SSO-go/internal/http/middleware"
 	"github.com/aygumov-g/service-SSO-go/internal/http/router"
@@ -16,20 +15,25 @@ import (
 )
 
 func buildHTTP(cfg *config.Config, pool *pgxpool.Pool, log logger.Logger) *server.Server {
-	userRepo := postgres.NewUserRepository(pool)
-	userService := user.NewService(userRepo)
+	jwtManager := auth.NewJWTManager(auth.Config{
+		Secret: []byte(cfg.JWT.Secret),
+		TTL:    cfg.JWT.TTL,
+	})
 
-	tmpl := template.Must(
-		template.ParseFiles("web/templates/index.html"),
-	)
+	authUserRepo := postgres.NewAuthUserRepository(pool)
+	authService := auth.NewService(authUserRepo, jwtManager)
 
-	indexHandler := handler.NewIndexHandler(tmpl)
-	testHandler := handler.NewTestHandler(userService)
+	registerHandler := handler.NewRegisterHandler(authService)
+	loginHandler := handler.NewLoginHandler(authService)
+	meHandler := handler.NewMeHandler(authUserRepo)
+
+	authMW := middleware.Auth(jwtManager)
 
 	r := router.New()
 
-	r.Handle("/", indexHandler)
-	r.Handle("/test", testHandler)
+	r.Handle("/auth/register", registerHandler)
+	r.Handle("/auth/login", loginHandler)
+	r.Handle("/auth/me", authMW(meHandler))
 
 	staticsFS := http.FileServer(http.Dir("web/statics"))
 	r.Handle("/stt/", http.StripPrefix("/stt/", staticsFS))
