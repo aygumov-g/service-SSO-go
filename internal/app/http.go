@@ -1,8 +1,6 @@
 package app
 
 import (
-	"net/http"
-
 	"github.com/aygumov-g/service-SSO-go/internal/config"
 	"github.com/aygumov-g/service-SSO-go/internal/domain/auth"
 	"github.com/aygumov-g/service-SSO-go/internal/http/handler"
@@ -34,9 +32,6 @@ func buildHTTP(cfg *config.Config, pool *pgxpool.Pool, log logger.Logger) *serve
 	r.Handle("/auth/register", registerHandler)
 	r.Handle("/auth/login", loginHandler)
 	r.Handle("/auth/me", authMW(meHandler))
-
-	staticsFS := http.FileServer(http.Dir("web/statics"))
-	r.Handle("/stt/", http.StripPrefix("/stt/", staticsFS))
 
 	r.Use(middleware.Logging(log))
 
