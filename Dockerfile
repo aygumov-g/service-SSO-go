@@ -8,5 +8,4 @@ RUN go build -o /app.f ./cmd/app/main.go
 FROM alpine:3.18
 WORKDIR /app
 COPY --from=builder /app.f .
-COPY ./web ./web
 ENTRYPOINT ["./app.f"]
