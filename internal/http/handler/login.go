@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/aygumov-g/service-SSO-go/internal/domain/auth"
-	"github.com/aygumov-g/service-SSO-go/internal/http/response"
 )
 
 type LoginService interface {
@@ -39,7 +38,7 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequestError(w, "bad request")
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
@@ -51,15 +50,17 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, auth.ErrInvalidCredentials):
-			response.UnauthorizedError(w, auth.ErrInvalidCredentials.Error())
+			http.Error(w, auth.ErrInvalidCredentials.Error(), http.StatusUnauthorized)
 		default:
-			response.InternalError(w, auth.ErrInternal.Error())
+			http.Error(w, auth.ErrInternal.Error(), http.StatusInternalServerError)
 		}
 
 		return
 	}
 
-	response.JSON(w, http.StatusOK, loginResponse{
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(loginResponse{
 		AccessToken: token,
 	})
 }

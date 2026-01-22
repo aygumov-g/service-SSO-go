@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/aygumov-g/service-SSO-go/internal/domain/auth"
-	"github.com/aygumov-g/service-SSO-go/internal/http/response"
 )
 
 type RegisterService interface {
@@ -35,7 +34,7 @@ func (h *RegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequestError(w, "bad request")
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
@@ -43,13 +42,15 @@ func (h *RegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, auth.ErrUserAlreadyExists):
-			response.ConflictError(w, auth.ErrUserAlreadyExists.Error())
+			http.Error(w, auth.ErrUserAlreadyExists.Error(), http.StatusConflict)
 		default:
-			response.InternalError(w, auth.ErrInternal.Error())
+			http.Error(w, auth.ErrInternal.Error(), http.StatusInternalServerError)
 		}
 
 		return
 	}
 
-	response.JSON(w, http.StatusCreated, struct{}{})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(struct{}{})
 }

@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/aygumov-g/service-SSO-go/internal/domain/auth"
-	"github.com/aygumov-g/service-SSO-go/internal/http/response"
 )
 
 type MeHandler struct {
@@ -23,13 +23,13 @@ func NewMeHandler(users auth.UserReaderByID) *MeHandler {
 func (h *MeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
-		response.UnauthorizedError(w, "unauthorized")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	user, err := h.users.GetByID(r.Context(), userID)
 	if err != nil {
-		response.NotFoundError(w, "not found")
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
@@ -38,5 +38,7 @@ func (h *MeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Login: user.Login,
 	}
 
-	response.JSON(w, http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }

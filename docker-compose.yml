@@ -31,12 +31,12 @@ services:
       service-sso-db:
         condition: service_healthy
     restart: "no"
-  service-sso-go-app:
+  service-sso-app-go:
     build:
       context: .
       dockerfile: Dockerfile
-    image: aygumov-g/service-sso-go-app:latest
-    container_name: sso-go-app
+    image: aygumov-g/service-sso-app-go:latest
+    container_name: sso-app-go
     environment:
       - APP_PORT=$APP_PORT
       - POSTGRES_HOST=$POSTGRES_HOST

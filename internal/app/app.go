@@ -32,3 +32,20 @@ func New(ctx context.Context) (*App, error) {
 		logger:     log,
 	}, nil
 }
+
+func (a *App) Run() {
+	a.logger.Info("http server started", "addr", a.httpServer.Addr())
+
+	if err := a.httpServer.Start(); err != nil {
+		a.logger.Error("http server failed", "error", err)
+	}
+}
+
+func (a *App) Shutdown(ctx context.Context) {
+	a.logger.Info("shutdown started")
+
+	_ = a.httpServer.Shutdown(ctx)
+	a.db.Close()
+
+	a.logger.Info("shutdown completed")
+}
