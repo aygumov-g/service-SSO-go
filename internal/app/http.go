@@ -1,6 +1,8 @@
 package app
 
 import (
+	"net/http"
+
 	"github.com/aygumov-g/service-SSO-go/internal/config"
 	"github.com/aygumov-g/service-SSO-go/internal/domain/auth"
 	"github.com/aygumov-g/service-SSO-go/internal/http/handler"
@@ -31,7 +33,7 @@ func buildHTTP(cfg *config.Config, pool *pgxpool.Pool, log logger.Logger) *serve
 
 	r.Handle("/auth/register", registerHandler)
 	r.Handle("/auth/login", loginHandler)
-	r.Handle("/auth/me", authMW(meHandler))
+	r.Handle("/auth/me", middleware.Method(http.MethodGet, authMW(meHandler)))
 
 	r.Use(middleware.Logging(log))
 
