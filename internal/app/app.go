@@ -4,22 +4,22 @@ import (
 	"context"
 
 	"github.com/aygumov-g/service-SSO-go/internal/config"
-	"github.com/aygumov-g/service-SSO-go/internal/http/server"
-	"github.com/aygumov-g/service-SSO-go/internal/logger"
-	"github.com/aygumov-g/service-SSO-go/internal/storage/postgres"
+	"github.com/aygumov-g/service-SSO-go/internal/infrastructure/postgres"
+	"github.com/aygumov-g/service-SSO-go/internal/transport/http/server"
+	"github.com/aygumov-g/service-SSO-go/pkg/logger"
 )
 
 type App struct {
+	logger     logger.Logger
 	httpServer *server.Server
 	db         *postgres.DB
-	logger     logger.Logger
 }
 
-func New(ctx context.Context) (*App, error) {
-	log := logger.New()
+func NewApp(ctx context.Context) (*App, error) {
 	cfg := config.Load()
+	log := logger.New()
 
-	db, err := postgres.New(ctx, cfg.MainDB.DSN())
+	db, err := postgres.New(ctx, cfg.DB.DSN())
 	if err != nil {
 		return nil, err
 	}
@@ -27,9 +27,9 @@ func New(ctx context.Context) (*App, error) {
 	httpServer := buildHTTP(cfg, db.Get(), log)
 
 	return &App{
+		logger:     log,
 		httpServer: httpServer,
 		db:         db,
-		logger:     log,
 	}, nil
 }
 

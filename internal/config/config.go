@@ -6,14 +6,14 @@ import (
 
 type Config struct {
 	AppPort string
-	MainDB  Postgres
+	DB      Postgres
 	JWT     JWT
 }
 
 func Load() *Config {
 	return &Config{
 		AppPort: os.Getenv("APP_PORT"),
-		MainDB: Postgres{
+		DB: Postgres{
 			dBHost:     os.Getenv("POSTGRES_HOST"),
 			dBUser:     os.Getenv("POSTGRES_USER"),
 			dBPassword: os.Getenv("POSTGRES_PASSWORD"),

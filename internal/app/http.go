@@ -4,38 +4,44 @@ import (
 	"net/http"
 
 	"github.com/aygumov-g/service-SSO-go/internal/config"
-	"github.com/aygumov-g/service-SSO-go/internal/domain/auth"
-	"github.com/aygumov-g/service-SSO-go/internal/http/handler"
-	"github.com/aygumov-g/service-SSO-go/internal/http/middleware"
-	"github.com/aygumov-g/service-SSO-go/internal/http/router"
-	"github.com/aygumov-g/service-SSO-go/internal/http/server"
-	"github.com/aygumov-g/service-SSO-go/internal/logger"
-	"github.com/aygumov-g/service-SSO-go/internal/storage/postgres"
+	"github.com/aygumov-g/service-SSO-go/internal/repository/postgres/user"
+	"github.com/aygumov-g/service-SSO-go/internal/service/jwt"
+	user_srv "github.com/aygumov-g/service-SSO-go/internal/service/user"
+	login_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/login"
+	me_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/me"
+	register_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/register"
+	auth_id "github.com/aygumov-g/service-SSO-go/internal/transport/http/identity/auth"
+	auth_mw "github.com/aygumov-g/service-SSO-go/internal/transport/http/middleware/auth"
+	methods_mw "github.com/aygumov-g/service-SSO-go/internal/transport/http/middleware/method"
+	"github.com/aygumov-g/service-SSO-go/internal/transport/http/router"
+	"github.com/aygumov-g/service-SSO-go/internal/transport/http/server"
+	"github.com/aygumov-g/service-SSO-go/pkg/clock"
+	"github.com/aygumov-g/service-SSO-go/pkg/logger"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func buildHTTP(cfg *config.Config, pool *pgxpool.Pool, log logger.Logger) *server.Server {
-	jwtManager := auth.NewJWTManager(auth.Config{
-		Secret: []byte(cfg.JWT.Secret),
-		TTL:    cfg.JWT.TTL,
-	})
+func buildHTTP(cfg *config.Config, db *pgxpool.Pool, log logger.Logger) *server.Server {
+	clk := clock.NewSystemClock()
 
-	authUserRepo := postgres.NewAuthUserRepository(pool)
-	authService := auth.NewService(authUserRepo, jwtManager)
+	jwtService := jwt.NewJWTService([]byte(cfg.JWT.Secret), cfg.JWT.TTL, clk)
 
-	registerHandler := handler.NewRegisterHandler(authService)
-	loginHandler := handler.NewLoginHandler(authService)
-	meHandler := handler.NewMeHandler(authUserRepo)
+	userRepo := user.NewRepository(db)
+	userService := user_srv.NewService(userRepo, jwtService)
 
-	authMW := middleware.Auth(jwtManager)
+	authIdentity := auth_id.NewIdentity("identity")
 
-	r := router.New()
+	authMW := auth_mw.NewMiddleware(jwtService, authIdentity)
+	methodsMW := methods_mw.NewMiddleware()
 
-	r.Handle("/auth/register", registerHandler)
-	r.Handle("/auth/login", loginHandler)
-	r.Handle("/auth/me", middleware.Method(http.MethodGet, authMW(meHandler)))
+	meHandler := me_handler.NewHandler(userService, authIdentity)
+	registerHandler := register_handler.NewHandler(userService)
+	loginHandler := login_handler.NewHandler(userService)
 
-	r.Use(middleware.Logging(log))
+	r := router.NewRouter()
+	r.Handle("/auth/me", methodsMW.Handle([]string{http.MethodGet}, authMW.Handle(meHandler)))
+	r.Handle("/auth/register", methodsMW.Handle([]string{http.MethodPost}, registerHandler))
+	r.Handle("/auth/login", methodsMW.Handle([]string{http.MethodPost}, loginHandler))
 
-	return server.New(":"+cfg.AppPort, r.Handler())
+	return server.NewServer(cfg.AppPort, r.Handler())
 }
