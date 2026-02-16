@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/aygumov-g/service-SSO-go/internal/config"
-	"github.com/aygumov-g/service-SSO-go/internal/repository/postgres/user"
+	account_db "github.com/aygumov-g/service-SSO-go/internal/repository/postgres/account"
+	account_srv "github.com/aygumov-g/service-SSO-go/internal/service/account"
 	"github.com/aygumov-g/service-SSO-go/internal/service/jwt"
-	user_srv "github.com/aygumov-g/service-SSO-go/internal/service/user"
 	login_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/login"
 	me_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/me"
 	register_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/register"
@@ -26,22 +26,22 @@ func buildHTTP(cfg *config.Config, db *pgxpool.Pool, log logger.Logger) *server.
 
 	jwtService := jwt.NewJWTService([]byte(cfg.JWT.Secret), cfg.JWT.TTL, clk)
 
-	userRepo := user.NewRepository(db)
-	userService := user_srv.NewService(userRepo, jwtService)
+	accountRepo := account_db.NewRepository(db)
+	accountService := account_srv.NewService(accountRepo, jwtService, clk)
 
 	authIdentity := auth_id.NewIdentity("identity")
 
 	authMW := auth_mw.NewMiddleware(jwtService, authIdentity)
 	methodsMW := methods_mw.NewMiddleware()
 
-	meHandler := me_handler.NewHandler(userService, authIdentity)
-	registerHandler := register_handler.NewHandler(userService)
-	loginHandler := login_handler.NewHandler(userService)
+	meHandler := me_handler.NewHandler(accountService, authIdentity)
+	registerHandler := register_handler.NewHandler(accountService)
+	loginHandler := login_handler.NewHandler(accountService)
 
 	r := router.NewRouter()
-	r.Handle("/auth/me", methodsMW.Handle([]string{http.MethodGet}, authMW.Handle(meHandler)))
-	r.Handle("/auth/register", methodsMW.Handle([]string{http.MethodPost}, registerHandler))
-	r.Handle("/auth/login", methodsMW.Handle([]string{http.MethodPost}, loginHandler))
+	r.Handle("/accounts/me", methodsMW.Handle([]string{http.MethodGet}, authMW.Handle(meHandler)))
+	r.Handle("/accounts/register", methodsMW.Handle([]string{http.MethodPost}, registerHandler))
+	r.Handle("/accounts/login", methodsMW.Handle([]string{http.MethodPost}, loginHandler))
 
 	return server.NewServer(cfg.AppPort, r.Handler())
 }

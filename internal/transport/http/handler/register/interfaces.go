@@ -4,6 +4,6 @@ import (
 	"context"
 )
 
-type UserService interface {
+type AccountService interface {
 	Register(ctx context.Context, login, password string) error
 }

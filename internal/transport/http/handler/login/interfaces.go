@@ -2,6 +2,6 @@ package login
 
 import "context"
 
-type UserService interface {
+type AccountService interface {
 	Login(ctx context.Context, login, password string) (string, error)
 }

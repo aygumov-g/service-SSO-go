@@ -5,16 +5,16 @@ import (
 	"errors"
 	"net/http"
 
-	srv_user "github.com/aygumov-g/service-SSO-go/internal/service/user"
+	srv_account "github.com/aygumov-g/service-SSO-go/internal/service/account"
 )
 
 type Handler struct {
-	users UserService
+	accounts AccountService
 }
 
-func NewHandler(users UserService) *Handler {
+func NewHandler(accounts AccountService) *Handler {
 	return &Handler{
-		users: users,
+		accounts: accounts,
 	}
 }
 
@@ -32,10 +32,10 @@ func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.users.Login(r.Context(), req.Login, req.Password)
+	token, err := h.accounts.Login(r.Context(), req.Login, req.Password)
 	if err != nil {
 		switch {
-		case errors.Is(err, srv_user.ErrInvalidCredentials):
+		case errors.Is(err, srv_account.ErrInvalidCredentials):
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		default:
 			http.Error(w, "internal error", http.StatusInternalServerError)

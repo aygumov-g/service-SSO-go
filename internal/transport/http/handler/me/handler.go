@@ -2,17 +2,20 @@ package me
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+
+	srv_account "github.com/aygumov-g/service-SSO-go/internal/service/account"
 )
 
 type Handler struct {
-	users    UserService
+	accounts AccountService
 	identity IdentityHTTP
 }
 
-func NewHandler(users UserService, identity IdentityHTTP) *Handler {
+func NewHandler(accounts AccountService, identity IdentityHTTP) *Handler {
 	return &Handler{
-		users:    users,
+		accounts: accounts,
 		identity: identity,
 	}
 }
@@ -31,13 +34,24 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.users.GetByID(r.Context(), identity.ID)
+	account, err := h.accounts.GetByID(r.Context(), identity.ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, srv_account.ErrAccountNotFound):
+			http.Error(w, "account not found", http.StatusConflict)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+
+		return
+	}
+
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
-	var resp userResponse
+	var resp accountResponse
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp.toResponse(user))
+	_ = json.NewEncoder(w).Encode(resp.toResponse(account))
 }

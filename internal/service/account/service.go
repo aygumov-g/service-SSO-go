@@ -1,31 +1,33 @@
-package user
+package account
 
 import (
 	"context"
 	"errors"
 
+	d_account "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 	d_identity "github.com/aygumov-g/service-SSO-go/internal/domain/identity"
-	d_user "github.com/aygumov-g/service-SSO-go/internal/domain/user"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
-	users UserRepository
-	jwt   JWTService
+	accounts AccountRepository
+	jwt      JWTService
+	clk      Clock
 }
 
-func NewService(users UserRepository, jwt JWTService) *Service {
+func NewService(accounts AccountRepository, jwt JWTService, clk Clock) *Service {
 	return &Service{
-		users: users,
-		jwt:   jwt,
+		accounts: accounts,
+		jwt:      jwt,
+		clk:      clk,
 	}
 }
 
 func (s *Service) Login(ctx context.Context, login, password string) (string, error) {
-	user, err := s.users.GetByLogin(ctx, login)
+	account, err := s.accounts.GetByLogin(ctx, login)
 	if err != nil {
-		if errors.Is(err, ErrUserNotFound) {
+		if errors.Is(err, ErrAccountNotFound) {
 			return "", ErrInvalidCredentials
 		}
 
@@ -33,30 +35,30 @@ func (s *Service) Login(ctx context.Context, login, password string) (string, er
 	}
 
 	if err := bcrypt.CompareHashAndPassword(
-		[]byte(user.PasswordHash),
+		[]byte(account.PasswordHash),
 		[]byte(password),
 	); err != nil {
 		return "", ErrInvalidCredentials
 	}
 
 	identity := d_identity.Identity{
-		ID: user.ID,
+		ID: account.ID,
 	}
 
 	return s.jwt.Issue(&identity)
 }
 
-func (s *Service) GetByID(ctx context.Context, id int64) (*d_user.User, error) {
-	return s.users.GetByID(ctx, id)
+func (s *Service) GetByID(ctx context.Context, id int64) (*d_account.Account, error) {
+	return s.accounts.GetByID(ctx, id)
 }
 
 func (s *Service) Register(ctx context.Context, login, password string) error {
-	_, err := s.users.GetByLogin(ctx, login)
+	_, err := s.accounts.GetByLogin(ctx, login)
 	if err == nil {
-		return ErrUserAlreadyExists
+		return ErrAccountAlreadyExists
 	}
 
-	if !errors.Is(err, ErrUserNotFound) {
+	if !errors.Is(err, ErrAccountNotFound) {
 		return err
 	}
 
@@ -65,10 +67,13 @@ func (s *Service) Register(ctx context.Context, login, password string) error {
 		return err
 	}
 
-	user := &d_user.User{
+	account := &d_account.Account{
 		Login:        login,
 		PasswordHash: string(hash),
+		Role:         "user",
+		CreatedAt:    s.clk.Now(),
+		UpdatedAt:    s.clk.Now(),
 	}
 
-	return s.users.Create(ctx, user)
+	return s.accounts.Create(ctx, account)
 }
