@@ -37,14 +37,18 @@ func (a *App) Run() {
 	a.logger.Info("http server started", "addr", a.httpServer.Addr())
 
 	if err := a.httpServer.Start(); err != nil {
-		a.logger.Error("http server failed", "error", err)
+		a.logger.Error("http server failed started", "error", err)
 	}
 }
 
 func (a *App) Shutdown(ctx context.Context) {
 	a.logger.Info("shutdown started")
 
-	_ = a.httpServer.Shutdown(ctx)
+	err := a.httpServer.Shutdown(ctx)
+	if err != nil {
+		a.logger.Error("http server failed shutdown", "error", err)
+	}
+
 	a.db.Close()
 
 	a.logger.Info("shutdown completed")
