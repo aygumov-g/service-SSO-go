@@ -11,7 +11,8 @@ import (
 type AccountRepository interface {
 	GetByLogin(ctx context.Context, login string) (*d_account.Account, error)
 	GetByID(ctx context.Context, id int64) (*d_account.Account, error)
-	Create(ctx context.Context, user *d_account.Account) error
+	Create(ctx context.Context, account *d_account.Account) error
+	Update(ctx context.Context, account *d_account.Account) error
 }
 
 type JWTService interface {

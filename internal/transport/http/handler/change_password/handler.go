@@ -1,4 +1,4 @@
-package me
+package change_password
 
 import (
 	"encoding/json"
@@ -22,23 +22,33 @@ func NewHandler(accounts AccountService, identity IdentityHTTP) *Handler {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
-	case http.MethodGet:
-		h.get(w, r)
+	case http.MethodPost:
+		h.post(w, r)
 	}
 }
 
-func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
 	identity, ok := h.identity.Unload(r.Context())
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	account, err := h.accounts.GetByID(r.Context(), identity.ID)
+	var req change_passwordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	err := h.accounts.ChangePassword(r.Context(), identity.ID, req.OldPassword, req.NewPassword)
 	if err != nil {
 		switch {
 		case errors.Is(err, srv_account.ErrAccountNotFound):
 			http.Error(w, "account not found", http.StatusConflict)
+		case errors.Is(err, srv_account.ErrSamePassword):
+			http.Error(w, "new password must differ from old", http.StatusBadRequest)
+		case errors.Is(err, srv_account.ErrInvalidCredentials):
+			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		default:
 			http.Error(w, "internal error", http.StatusInternalServerError)
 		}
@@ -46,7 +56,5 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var resp accountResponse
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp.toResponse(account))
+	w.WriteHeader(http.StatusNoContent)
 }

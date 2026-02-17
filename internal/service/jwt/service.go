@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"strconv"
 	"time"
 
 	d_identity "github.com/aygumov-g/service-SSO-go/internal/domain/identity"
@@ -22,28 +23,50 @@ func NewJWTService(secret []byte, ttl time.Duration, clk Clock) *JWTService {
 	}
 }
 
-func (j *JWTService) Issue(identity *d_identity.Identity) (string, error) {
-	claims := jwt.MapClaims{
-		"sub": identity.ID,
-		"exp": j.clk.Now().Add(j.ttl).Unix(),
-		"iat": j.clk.Now().Unix(),
+func (s *JWTService) Issue(identity *d_identity.Identity) (string, error) {
+	now := s.clk.Now()
+
+	claims := Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   strconv.FormatInt(identity.ID, 10),
+			ExpiresAt: jwt.NewNumericDate(now.Add(s.ttl)),
+			IssuedAt:  jwt.NewNumericDate(now),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(j.secret)
+	return token.SignedString(s.secret)
 }
 
-func (j *JWTService) Parse(tokenStr string) (*d_identity.Identity, error) {
-	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-		return j.secret, nil
-	})
+func (s *JWTService) Parse(tokenStr string) (*d_identity.Identity, error) {
+	token, err := jwt.ParseWithClaims(
+		tokenStr,
+		&Claims{},
+		func(token *jwt.Token) (any, error) {
+			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+				return nil, ErrInvalidSigningMethod
+			}
+
+			return s.secret, nil
+		},
+		jwt.WithTimeFunc(s.clk.Now),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	claims := token.Claims.(jwt.MapClaims)
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, ErrInvalidToken
+	}
+
+	userID, err := strconv.ParseInt(claims.Subject, 10, 64)
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
 	identity := d_identity.Identity{
-		ID: int64(claims["sub"].(float64)),
+		ID: userID,
 	}
 
 	return &identity, nil

@@ -124,3 +124,23 @@ func (r *Repository) Create(ctx context.Context, account *d_account.Account) err
 
 	return nil
 }
+
+func (r *Repository) Update(ctx context.Context, account *d_account.Account) error {
+	_, err := r.db.Exec(
+		ctx,
+		`
+		UPDATE accounts
+		SET
+			login = $2,
+			password_hash = $3,
+			updated_at = $4
+		WHERE id = $1
+		`,
+		account.ID,
+		account.Login,
+		account.PasswordHash,
+		account.UpdatedAt,
+	)
+
+	return err
+}

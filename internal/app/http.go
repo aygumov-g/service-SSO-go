@@ -7,6 +7,7 @@ import (
 	account_db "github.com/aygumov-g/service-SSO-go/internal/repository/postgres/account"
 	account_srv "github.com/aygumov-g/service-SSO-go/internal/service/account"
 	"github.com/aygumov-g/service-SSO-go/internal/service/jwt"
+	change_password_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/change_password"
 	login_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/login"
 	me_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/me"
 	register_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/register"
@@ -29,17 +30,19 @@ func buildHTTP(cfg *config.Config, db *pgxpool.Pool, log logger.Logger) *server.
 	accountRepo := account_db.NewRepository(db)
 	accountService := account_srv.NewService(accountRepo, jwtService, clk)
 
-	authIdentity := auth_id.NewIdentity("identity")
+	authIdentity := auth_id.NewIdentity()
 
 	authMW := auth_mw.NewMiddleware(jwtService, authIdentity)
 	methodsMW := methods_mw.NewMiddleware()
 
 	meHandler := me_handler.NewHandler(accountService, authIdentity)
+	change_password := change_password_handler.NewHandler(accountService, authIdentity)
 	registerHandler := register_handler.NewHandler(accountService)
 	loginHandler := login_handler.NewHandler(accountService)
 
 	r := router.NewRouter()
 	r.Handle("/accounts/me", methodsMW.Handle([]string{http.MethodGet}, authMW.Handle(meHandler)))
+	r.Handle("/accounts/change_password", methodsMW.Handle([]string{http.MethodPost}, authMW.Handle(change_password)))
 	r.Handle("/accounts/register", methodsMW.Handle([]string{http.MethodPost}, registerHandler))
 	r.Handle("/accounts/login", methodsMW.Handle([]string{http.MethodPost}, loginHandler))
 

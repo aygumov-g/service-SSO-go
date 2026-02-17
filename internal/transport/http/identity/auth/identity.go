@@ -6,21 +6,23 @@ import (
 	d_identity "github.com/aygumov-g/service-SSO-go/internal/domain/identity"
 )
 
+type ctxKey struct{}
+
 type Identity struct {
-	contextTokenKey string
+	key ctxKey
 }
 
-func NewIdentity(key string) *Identity {
+func NewIdentity() *Identity {
 	return &Identity{
-		contextTokenKey: key,
+		key: ctxKey{},
 	}
 }
 
 func (i *Identity) Upload(ctx context.Context, identity *d_identity.Identity) context.Context {
-	return context.WithValue(ctx, i.contextTokenKey, identity)
+	return context.WithValue(ctx, i.key, identity)
 }
 
 func (i *Identity) Unload(ctx context.Context) (*d_identity.Identity, bool) {
-	identity, ok := ctx.Value(i.contextTokenKey).(*d_identity.Identity)
+	identity, ok := ctx.Value(i.key).(*d_identity.Identity)
 	return identity, ok
 }
