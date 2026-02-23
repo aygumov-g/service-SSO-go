@@ -3,9 +3,9 @@ package refresh
 import (
 	"context"
 
-	srv_session "github.com/aygumov-g/service-SSO-go/internal/service/session"
+	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
 )
 
 type SessionService interface {
-	Refresh(ctx context.Context, refreshToken string) (*srv_session.TokenPair, error)
+	Refresh(ctx context.Context, refreshToken string) (*session_srv.TokenPair, error)
 }

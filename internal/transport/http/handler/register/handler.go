@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	srv_account "github.com/aygumov-g/service-SSO-go/internal/service/account"
+	account_srv "github.com/aygumov-g/service-SSO-go/internal/service/account"
 )
 
 type Handler struct {
@@ -35,7 +35,7 @@ func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
 	err := h.accounts.Register(r.Context(), req.Login, req.Password)
 	if err != nil {
 		switch {
-		case errors.Is(err, srv_account.ErrAccountAlreadyExists):
+		case errors.Is(err, account_srv.ErrAccountAlreadyExists):
 			http.Error(w, "account already exists", http.StatusConflict)
 		default:
 			http.Error(w, "internal error", http.StatusInternalServerError)

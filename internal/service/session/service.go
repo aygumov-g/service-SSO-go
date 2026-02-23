@@ -5,7 +5,6 @@ import (
 	"time"
 
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
-	identity_d "github.com/aygumov-g/service-SSO-go/internal/domain/identity"
 	session_d "github.com/aygumov-g/service-SSO-go/internal/domain/session"
 )
 
@@ -53,12 +52,12 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		return nil, err
 	}
 
-	accoundID, err := s.sessions.RotateByTokenHash(ctx, hashToken(refreshToken), newSession, now)
+	accountID, err := s.sessions.RotateByTokenHash(ctx, hashToken(refreshToken), newSession, now)
 	if err != nil {
 		return nil, err
 	}
 
-	accessToken, err := s.issueAccess(accoundID)
+	accessToken, err := s.issueAccess(accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +69,7 @@ func (s *Service) RevokeAllByAccountID(ctx context.Context, id int64, now time.T
 	return s.sessions.RevokeAllByAccountID(ctx, id, now)
 }
 
-func (s *Service) buildSession(accoundID int64, now time.Time) (*session_d.Session, string, error) {
+func (s *Service) buildSession(accountID int64, now time.Time) (*session_d.Session, string, error) {
 	refreshToken, err := generateRefreshToken()
 	if err != nil {
 		return nil, "", err
@@ -79,7 +78,7 @@ func (s *Service) buildSession(accoundID int64, now time.Time) (*session_d.Sessi
 	hash := hashToken(refreshToken)
 
 	session := &session_d.Session{
-		AccountID: accoundID,
+		AccountID: accountID,
 		TokenHash: hash,
 		ExpiresAt: now.Add(s.ttl),
 		CreatedAt: now,
@@ -88,8 +87,6 @@ func (s *Service) buildSession(accoundID int64, now time.Time) (*session_d.Sessi
 	return session, refreshToken, nil
 }
 
-func (s *Service) issueAccess(accoundID int64) (string, error) {
-	return s.jwt.Issue(&identity_d.Identity{
-		ID: accoundID,
-	})
+func (s *Service) issueAccess(accountID int64) (string, error) {
+	return s.jwt.Issue(accountID)
 }

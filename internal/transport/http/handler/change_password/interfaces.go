@@ -3,7 +3,7 @@ package change_password
 import (
 	"context"
 
-	d_identity "github.com/aygumov-g/service-SSO-go/internal/domain/identity"
+	identity_d "github.com/aygumov-g/service-SSO-go/internal/domain/identity"
 )
 
 type AccountService interface {
@@ -11,5 +11,5 @@ type AccountService interface {
 }
 
 type IdentityHTTP interface {
-	Unload(ctx context.Context) (*d_identity.Identity, bool)
+	Unload(ctx context.Context) (*identity_d.Identity, bool)
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	d_account "github.com/aygumov-g/service-SSO-go/internal/domain/account"
-	srv_session "github.com/aygumov-g/service-SSO-go/internal/service/session"
+	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
+	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -36,7 +36,7 @@ func (s *Service) Register(ctx context.Context, login, password string) error {
 
 	now := s.clk.Now()
 
-	account := &d_account.Account{
+	account := &account_d.Account{
 		Login:        login,
 		PasswordHash: string(hash),
 		Role:         "user",
@@ -47,7 +47,7 @@ func (s *Service) Register(ctx context.Context, login, password string) error {
 	return s.accounts.Create(ctx, account)
 }
 
-func (s *Service) Login(ctx context.Context, login, password string) (*srv_session.TokenPair, error) {
+func (s *Service) Login(ctx context.Context, login, password string) (*session_srv.TokenPair, error) {
 	account, err := s.accounts.GetByLogin(ctx, login)
 	if err != nil {
 		if errors.Is(err, ErrAccountNotFound) {
@@ -109,6 +109,6 @@ func (s *Service) ChangePassword(ctx context.Context, id int64, oldPassword, new
 	return s.sessions.RevokeAllByAccountID(ctx, account.ID, now)
 }
 
-func (s *Service) GetByID(ctx context.Context, id int64) (*d_account.Account, error) {
+func (s *Service) GetByID(ctx context.Context, id int64) (*account_d.Account, error) {
 	return s.accounts.GetByID(ctx, id)
 }

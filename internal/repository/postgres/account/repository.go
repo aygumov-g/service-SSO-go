@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	d_account "github.com/aygumov-g/service-SSO-go/internal/domain/account"
-	srv_account "github.com/aygumov-g/service-SSO-go/internal/service/account"
+	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
+	account_srv "github.com/aygumov-g/service-SSO-go/internal/service/account"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -20,7 +20,7 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) GetByLogin(ctx context.Context, login string) (*d_account.Account, error) {
+func (r *Repository) GetByLogin(ctx context.Context, login string) (*account_d.Account, error) {
 	row := r.db.QueryRow(
 		ctx,
 		`
@@ -38,7 +38,7 @@ func (r *Repository) GetByLogin(ctx context.Context, login string) (*d_account.A
 		login,
 	)
 
-	var account d_account.Account
+	var account account_d.Account
 	if err := row.Scan(
 		&account.ID,
 		&account.Login,
@@ -48,7 +48,7 @@ func (r *Repository) GetByLogin(ctx context.Context, login string) (*d_account.A
 		&account.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, srv_account.ErrAccountNotFound
+			return nil, account_srv.ErrAccountNotFound
 		}
 
 		return nil, err
@@ -57,7 +57,7 @@ func (r *Repository) GetByLogin(ctx context.Context, login string) (*d_account.A
 	return &account, nil
 }
 
-func (r *Repository) GetByID(ctx context.Context, id int64) (*d_account.Account, error) {
+func (r *Repository) GetByID(ctx context.Context, id int64) (*account_d.Account, error) {
 	row := r.db.QueryRow(
 		ctx,
 		`
@@ -75,7 +75,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*d_account.Account,
 		id,
 	)
 
-	var account d_account.Account
+	var account account_d.Account
 	if err := row.Scan(
 		&account.ID,
 		&account.Login,
@@ -85,7 +85,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*d_account.Account,
 		&account.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, srv_account.ErrAccountNotFound
+			return nil, account_srv.ErrAccountNotFound
 		}
 
 		return nil, err
@@ -94,7 +94,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*d_account.Account,
 	return &account, nil
 }
 
-func (r *Repository) Create(ctx context.Context, account *d_account.Account) error {
+func (r *Repository) Create(ctx context.Context, account *account_d.Account) error {
 	_, err := r.db.Exec(
 		ctx,
 		`
@@ -117,7 +117,7 @@ func (r *Repository) Create(ctx context.Context, account *d_account.Account) err
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			if pgErr.Code == "23505" {
-				return srv_account.ErrAccountAlreadyExists
+				return account_srv.ErrAccountAlreadyExists
 			}
 		}
 
@@ -127,7 +127,7 @@ func (r *Repository) Create(ctx context.Context, account *d_account.Account) err
 	return nil
 }
 
-func (r *Repository) Update(ctx context.Context, account *d_account.Account) error {
+func (r *Repository) Update(ctx context.Context, account *account_d.Account) error {
 	_, err := r.db.Exec(
 		ctx,
 		`

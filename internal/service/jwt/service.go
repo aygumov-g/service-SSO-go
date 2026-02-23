@@ -23,12 +23,12 @@ func NewJWTService(secret []byte, ttl time.Duration, clk Clock) *JWTService {
 	}
 }
 
-func (s *JWTService) Issue(identity *d_identity.Identity) (string, error) {
+func (s *JWTService) Issue(accountID int64) (string, error) {
 	now := s.clk.Now()
 
 	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   strconv.FormatInt(identity.ID, 10),
+			Subject:   strconv.FormatInt(accountID, 10),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.ttl)),
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
@@ -60,13 +60,13 @@ func (s *JWTService) Parse(tokenStr string) (*d_identity.Identity, error) {
 		return nil, ErrInvalidToken
 	}
 
-	userID, err := strconv.ParseInt(claims.Subject, 10, 64)
+	accountID, err := strconv.ParseInt(claims.Subject, 10, 64)
 	if err != nil {
 		return nil, ErrInvalidToken
 	}
 
 	identity := d_identity.Identity{
-		ID: userID,
+		ID: accountID,
 	}
 
 	return &identity, nil
