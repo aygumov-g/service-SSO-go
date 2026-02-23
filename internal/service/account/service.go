@@ -5,27 +5,31 @@ import (
 	"errors"
 
 	d_account "github.com/aygumov-g/service-SSO-go/internal/domain/account"
-	d_identity "github.com/aygumov-g/service-SSO-go/internal/domain/identity"
+	srv_session "github.com/aygumov-g/service-SSO-go/internal/service/session"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
 	accounts AccountRepository
-	jwt      JWTService
+	sessions SessionService
 	clk      Clock
 }
 
-func NewService(accounts AccountRepository, jwt JWTService, clk Clock) *Service {
+func NewService(
+	accounts AccountRepository,
+	sessions SessionService,
+	clk Clock,
+) *Service {
 	return &Service{
 		accounts: accounts,
-		jwt:      jwt,
+		sessions: sessions,
 		clk:      clk,
 	}
 }
 
 func (s *Service) Register(ctx context.Context, login, password string) error {
-	hash, err := s.getHash(password)
+	hash, err := getHash(password)
 	if err != nil {
 		return err
 	}
@@ -43,7 +47,7 @@ func (s *Service) Register(ctx context.Context, login, password string) error {
 	return s.accounts.Create(ctx, account)
 }
 
-func (s *Service) Login(ctx context.Context, login, password string) (string, error) {
+func (s *Service) Login(ctx context.Context, login, password string) (*srv_session.TokenPair, error) {
 	account, err := s.accounts.GetByLogin(ctx, login)
 	if err != nil {
 		if errors.Is(err, ErrAccountNotFound) {
@@ -52,24 +56,20 @@ func (s *Service) Login(ctx context.Context, login, password string) (string, er
 				[]byte(password),
 			)
 
-			return "", ErrInvalidCredentials
+			return nil, ErrInvalidCredentials
 		}
 
-		return "", err
+		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword(
 		[]byte(account.PasswordHash),
 		[]byte(password),
 	); err != nil {
-		return "", ErrInvalidCredentials
+		return nil, ErrInvalidCredentials
 	}
 
-	identity := d_identity.Identity{
-		ID: account.ID,
-	}
-
-	return s.jwt.Issue(&identity)
+	return s.sessions.Create(ctx, account)
 }
 
 func (s *Service) ChangePassword(ctx context.Context, id int64, oldPassword, newPassword string) error {
@@ -92,21 +92,23 @@ func (s *Service) ChangePassword(ctx context.Context, id int64, oldPassword, new
 		return ErrSamePassword
 	}
 
-	hash, err := s.getHash(newPassword)
+	hash, err := getHash(newPassword)
 	if err != nil {
 		return err
 	}
 
-	account.PasswordHash = string(hash)
-	account.UpdatedAt = s.clk.Now()
+	now := s.clk.Now()
 
-	return s.accounts.Update(ctx, account)
+	account.PasswordHash = string(hash)
+	account.UpdatedAt = now
+
+	if err := s.accounts.Update(ctx, account); err != nil {
+		return err
+	}
+
+	return s.sessions.RevokeAllByAccountID(ctx, account.ID, now)
 }
 
 func (s *Service) GetByID(ctx context.Context, id int64) (*d_account.Account, error) {
 	return s.accounts.GetByID(ctx, id)
-}
-
-func (s *Service) getHash(password string) ([]byte, error) {
-	return bcrypt.GenerateFromPassword([]byte(password), 12)
 }

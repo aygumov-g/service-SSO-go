@@ -29,7 +29,7 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 
 		identity, err := m.jwt.Parse(token)
 		if err != nil {
-			http.Error(w, "invalid token", http.StatusUnauthorized)
+			http.Error(w, "invalid access token", http.StatusUnauthorized)
 			return
 		}
 

@@ -1,20 +1,20 @@
-package login
+package refresh
 
 import (
 	"encoding/json"
 	"errors"
 	"net/http"
 
-	account_srv "github.com/aygumov-g/service-SSO-go/internal/service/account"
+	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
 )
 
 type Handler struct {
-	accounts AccountService
+	sessions SessionService
 }
 
-func NewHandler(accounts AccountService) *Handler {
+func NewHandler(sessions SessionService) *Handler {
 	return &Handler{
-		accounts: accounts,
+		sessions: sessions,
 	}
 }
 
@@ -26,17 +26,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
-	var req loginRequest
+	var req refreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	tokens, err := h.accounts.Login(r.Context(), req.Login, req.Password)
+	tokens, err := h.sessions.Refresh(r.Context(), req.RefreshToken)
 	if err != nil {
 		switch {
-		case errors.Is(err, account_srv.ErrInvalidCredentials):
-			http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		case errors.Is(err, session_srv.ErrInvalidRefreshToken):
+			http.Error(w, "invalid refresh token", http.StatusUnauthorized)
 		default:
 			http.Error(w, "internal error", http.StatusInternalServerError)
 		}
@@ -44,7 +44,7 @@ func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var resp loginResponse
+	var resp refreshResponse
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp.toResponse(tokens))
 }

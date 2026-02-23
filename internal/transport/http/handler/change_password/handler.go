@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	srv_account "github.com/aygumov-g/service-SSO-go/internal/service/account"
+	account_srv "github.com/aygumov-g/service-SSO-go/internal/service/account"
 )
 
 type Handler struct {
@@ -43,11 +43,11 @@ func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
 	err := h.accounts.ChangePassword(r.Context(), identity.ID, req.OldPassword, req.NewPassword)
 	if err != nil {
 		switch {
-		case errors.Is(err, srv_account.ErrAccountNotFound):
+		case errors.Is(err, account_srv.ErrAccountNotFound):
 			http.Error(w, "account not found", http.StatusConflict)
-		case errors.Is(err, srv_account.ErrSamePassword):
+		case errors.Is(err, account_srv.ErrSamePassword):
 			http.Error(w, "new password must differ from old", http.StatusBadRequest)
-		case errors.Is(err, srv_account.ErrInvalidCredentials):
+		case errors.Is(err, account_srv.ErrInvalidCredentials):
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		default:
 			http.Error(w, "internal error", http.StatusInternalServerError)

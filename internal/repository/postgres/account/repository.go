@@ -32,7 +32,8 @@ func (r *Repository) GetByLogin(ctx context.Context, login string) (*d_account.A
 			created_at,
 			updated_at
 		FROM accounts
-		WHERE login = $1
+		WHERE
+			login = $1
 		`,
 		login,
 	)
@@ -68,7 +69,8 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*d_account.Account,
 			created_at,
 			updated_at
 		FROM accounts
-		WHERE id = $1
+		WHERE
+			id = $1
 		`,
 		id,
 	)
@@ -134,7 +136,8 @@ func (r *Repository) Update(ctx context.Context, account *d_account.Account) err
 			login = $2,
 			password_hash = $3,
 			updated_at = $4
-		WHERE id = $1
+		WHERE
+			id = $1
 		`,
 		account.ID,
 		account.Login,

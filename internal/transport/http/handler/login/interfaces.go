@@ -1,7 +1,11 @@
 package login
 
-import "context"
+import (
+	"context"
+
+	srv_session "github.com/aygumov-g/service-SSO-go/internal/service/session"
+)
 
 type AccountService interface {
-	Login(ctx context.Context, login, password string) (string, error)
+	Login(ctx context.Context, login, password string) (*srv_session.TokenPair, error)
 }

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	srv_account "github.com/aygumov-g/service-SSO-go/internal/service/account"
+	account_srv "github.com/aygumov-g/service-SSO-go/internal/service/account"
 )
 
 type Handler struct {
@@ -37,7 +37,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	account, err := h.accounts.GetByID(r.Context(), identity.ID)
 	if err != nil {
 		switch {
-		case errors.Is(err, srv_account.ErrAccountNotFound):
+		case errors.Is(err, account_srv.ErrAccountNotFound):
 			http.Error(w, "account not found", http.StatusConflict)
 		default:
 			http.Error(w, "internal error", http.StatusInternalServerError)

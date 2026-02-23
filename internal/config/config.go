@@ -2,17 +2,21 @@ package config
 
 import (
 	"os"
+	"time"
 )
 
 type Config struct {
-	AppPort string
+	App     App
 	DB      Postgres
+	Refresh Refresh
 	JWT     JWT
 }
 
 func Load() *Config {
 	return &Config{
-		AppPort: os.Getenv("APP_PORT"),
+		App: App{
+			Port: os.Getenv("APP_PORT"),
+		},
 		DB: Postgres{
 			dBHost:     os.Getenv("POSTGRES_HOST"),
 			dBUser:     os.Getenv("POSTGRES_USER"),
@@ -21,7 +25,19 @@ func Load() *Config {
 		},
 		JWT: JWT{
 			Secret: []byte(os.Getenv("JWT_SECRET")),
-			TTL:    TTL(os.Getenv("JWT_TTL")),
+			TTL:    ttl(os.Getenv("JWT_TTL")),
+		},
+		Refresh: Refresh{
+			TTL: ttl(os.Getenv("REFRESH_TTL")),
 		},
 	}
+}
+
+func ttl(ttlStr string) time.Duration {
+	ttl, err := time.ParseDuration(ttlStr)
+	if err != nil {
+		panic(err)
+	}
+
+	return ttl
 }
