@@ -13,3 +13,7 @@ type JWTService interface {
 type IdentityHTTP interface {
 	Upload(ctx context.Context, identity *identity_d.Identity) context.Context
 }
+
+type AccountService interface {
+	ValidateTokenVersion(ctx context.Context, identity *identity_d.Identity) error
+}

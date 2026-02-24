@@ -31,14 +31,14 @@ func buildHTTP(cfg *config.Config, db *pgxpool.Pool, log logger.Logger) *server.
 	jwtService := jwt_srv.NewJWTService([]byte(cfg.JWT.Secret), cfg.JWT.TTL, clk)
 
 	sessionRepo := session_db.NewRepository(db)
-	sessionService := session_srv.NewService(sessionRepo, jwtService, cfg.Refresh.TTL, clk)
-
 	accountRepo := account_db.NewRepository(db)
+
+	sessionService := session_srv.NewService(sessionRepo, accountRepo, jwtService, cfg.Refresh.TTL, clk)
 	accountService := account_srv.NewService(accountRepo, sessionService, clk)
 
 	authIdentity := auth_id.NewIdentity()
 
-	authMW := auth_mw.NewMiddleware(jwtService, authIdentity)
+	authMW := auth_mw.NewMiddleware(jwtService, authIdentity, accountService)
 	methodsMW := methods_mw.NewMiddleware()
 
 	meHandler := me_handler.NewHandler(accountService, authIdentity)

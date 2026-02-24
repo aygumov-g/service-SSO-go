@@ -8,12 +8,14 @@ import (
 type Middleware struct {
 	jwt      JWTService
 	identity IdentityHTTP
+	accounts AccountService
 }
 
-func NewMiddleware(jwt JWTService, identity IdentityHTTP) *Middleware {
+func NewMiddleware(jwt JWTService, identity IdentityHTTP, accounts AccountService) *Middleware {
 	return &Middleware{
 		jwt:      jwt,
 		identity: identity,
+		accounts: accounts,
 	}
 }
 
@@ -29,6 +31,11 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 
 		identity, err := m.jwt.Parse(token)
 		if err != nil {
+			http.Error(w, "invalid access token", http.StatusUnauthorized)
+			return
+		}
+
+		if err = m.accounts.ValidateTokenVersion(r.Context(), identity); err != nil {
 			http.Error(w, "invalid access token", http.StatusUnauthorized)
 			return
 		}

@@ -5,26 +5,27 @@ import (
 	"errors"
 
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
+	identity_d "github.com/aygumov-g/service-SSO-go/internal/domain/identity"
 	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
-	accounts AccountRepository
-	sessions SessionService
-	clk      Clock
+	accountsRepo AccountRepository
+	sessions     SessionService
+	clk          Clock
 }
 
 func NewService(
-	accounts AccountRepository,
+	accountsRepo AccountRepository,
 	sessions SessionService,
 	clk Clock,
 ) *Service {
 	return &Service{
-		accounts: accounts,
-		sessions: sessions,
-		clk:      clk,
+		accountsRepo: accountsRepo,
+		sessions:     sessions,
+		clk:          clk,
 	}
 }
 
@@ -44,11 +45,11 @@ func (s *Service) Register(ctx context.Context, login, password string) error {
 		UpdatedAt:    now,
 	}
 
-	return s.accounts.Create(ctx, account)
+	return s.accountsRepo.Create(ctx, account)
 }
 
 func (s *Service) Login(ctx context.Context, login, password string) (*session_srv.TokenPair, error) {
-	account, err := s.accounts.GetByLogin(ctx, login)
+	account, err := s.accountsRepo.GetByLogin(ctx, login)
 	if err != nil {
 		if errors.Is(err, ErrAccountNotFound) {
 			_ = bcrypt.CompareHashAndPassword(
@@ -73,7 +74,7 @@ func (s *Service) Login(ctx context.Context, login, password string) (*session_s
 }
 
 func (s *Service) ChangePassword(ctx context.Context, id int64, oldPassword, newPassword string) error {
-	account, err := s.accounts.GetByID(ctx, id)
+	account, err := s.GetByID(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -99,16 +100,30 @@ func (s *Service) ChangePassword(ctx context.Context, id int64, oldPassword, new
 
 	now := s.clk.Now()
 
+	account.TokenVersion++
 	account.PasswordHash = string(hash)
 	account.UpdatedAt = now
 
-	if err := s.accounts.Update(ctx, account); err != nil {
+	if err := s.accountsRepo.Update(ctx, account); err != nil {
 		return err
 	}
 
 	return s.sessions.RevokeAllByAccountID(ctx, account.ID, now)
 }
 
+func (s *Service) ValidateTokenVersion(ctx context.Context, identity *identity_d.Identity) error {
+	account, err := s.GetByID(ctx, identity.ID)
+	if err != nil {
+		return ErrInvalidCredentials
+	}
+
+	if account.TokenVersion != identity.TokenVersion {
+		return ErrInvalidCredentials
+	}
+
+	return nil
+}
+
 func (s *Service) GetByID(ctx context.Context, id int64) (*account_d.Account, error) {
-	return s.accounts.GetByID(ctx, id)
+	return s.accountsRepo.GetByID(ctx, id)
 }

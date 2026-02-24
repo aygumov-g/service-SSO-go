@@ -9,18 +9,26 @@ import (
 )
 
 type Service struct {
-	sessions SessionRepository
-	jwt      JWTService
-	ttl      time.Duration
-	clk      Clock
+	sessionsRepo SessionRepository
+	accountsRepo AccountRepository
+	jwt          JWTService
+	ttl          time.Duration
+	clk          Clock
 }
 
-func NewService(sessions SessionRepository, jwt JWTService, ttl time.Duration, clk Clock) *Service {
+func NewService(
+	sessionsRepo SessionRepository,
+	accountsRepo AccountRepository,
+	jwt JWTService,
+	ttl time.Duration,
+	clk Clock,
+) *Service {
 	return &Service{
-		sessions: sessions,
-		jwt:      jwt,
-		ttl:      ttl,
-		clk:      clk,
+		sessionsRepo: sessionsRepo,
+		accountsRepo: accountsRepo,
+		jwt:          jwt,
+		ttl:          ttl,
+		clk:          clk,
 	}
 }
 
@@ -32,11 +40,11 @@ func (s *Service) Create(ctx context.Context, account *account_d.Account) (*Toke
 		return nil, err
 	}
 
-	if err := s.sessions.Create(ctx, session); err != nil {
+	if err := s.sessionsRepo.Create(ctx, session); err != nil {
 		return nil, err
 	}
 
-	accessToken, err := s.issueAccess(account.ID)
+	accessToken, err := s.issueAccess(account.ID, account.TokenVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -52,12 +60,17 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		return nil, err
 	}
 
-	accountID, err := s.sessions.RotateByTokenHash(ctx, hashToken(refreshToken), newSession, now)
+	accountID, err := s.sessionsRepo.RotateByTokenHash(ctx, hashToken(refreshToken), newSession, now)
 	if err != nil {
 		return nil, err
 	}
 
-	accessToken, err := s.issueAccess(accountID)
+	account, err := s.accountsRepo.GetByID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	accessToken, err := s.issueAccess(accountID, account.TokenVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +79,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 }
 
 func (s *Service) RevokeAllByAccountID(ctx context.Context, id int64, now time.Time) error {
-	return s.sessions.RevokeAllByAccountID(ctx, id, now)
+	return s.sessionsRepo.RevokeAllByAccountID(ctx, id, now)
 }
 
 func (s *Service) buildSession(accountID int64, now time.Time) (*session_d.Session, string, error) {
@@ -87,6 +100,6 @@ func (s *Service) buildSession(accountID int64, now time.Time) (*session_d.Sessi
 	return session, refreshToken, nil
 }
 
-func (s *Service) issueAccess(accountID int64) (string, error) {
-	return s.jwt.Issue(accountID)
+func (s *Service) issueAccess(accountID int64, tokenVersion int) (string, error) {
+	return s.jwt.Issue(accountID, tokenVersion)
 }

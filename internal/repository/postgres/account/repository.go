@@ -28,6 +28,7 @@ func (r *Repository) GetByLogin(ctx context.Context, login string) (*account_d.A
 			id,
 			login,
 			password_hash,
+			token_version,
 			role,
 			created_at,
 			updated_at
@@ -43,6 +44,7 @@ func (r *Repository) GetByLogin(ctx context.Context, login string) (*account_d.A
 		&account.ID,
 		&account.Login,
 		&account.PasswordHash,
+		&account.TokenVersion,
 		&account.Role,
 		&account.CreatedAt,
 		&account.UpdatedAt,
@@ -65,6 +67,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*account_d.Account,
 			id,
 			login,
 			password_hash,
+			token_version,
 			role,
 			created_at,
 			updated_at
@@ -80,6 +83,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*account_d.Account,
 		&account.ID,
 		&account.Login,
 		&account.PasswordHash,
+		&account.TokenVersion,
 		&account.Role,
 		&account.CreatedAt,
 		&account.UpdatedAt,
@@ -101,14 +105,16 @@ func (r *Repository) Create(ctx context.Context, account *account_d.Account) err
 		INSERT INTO accounts (
 			login,
 			password_hash,
+			token_version,
 			role,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		`,
 		account.Login,
 		account.PasswordHash,
+		account.TokenVersion,
 		account.Role,
 		account.CreatedAt,
 		account.UpdatedAt,
@@ -135,13 +141,15 @@ func (r *Repository) Update(ctx context.Context, account *account_d.Account) err
 		SET
 			login = $2,
 			password_hash = $3,
-			updated_at = $4
+			token_version = $4,
+			updated_at = $5
 		WHERE
 			id = $1
 		`,
 		account.ID,
 		account.Login,
 		account.PasswordHash,
+		account.TokenVersion,
 		account.UpdatedAt,
 	)
 

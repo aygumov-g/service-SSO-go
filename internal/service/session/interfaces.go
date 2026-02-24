@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 	session_d "github.com/aygumov-g/service-SSO-go/internal/domain/session"
 )
 
@@ -14,8 +15,12 @@ type SessionRepository interface {
 	RevokeAllByAccountID(ctx context.Context, id int64, now time.Time) error
 }
 
+type AccountRepository interface {
+	GetByID(ctx context.Context, id int64) (*account_d.Account, error)
+}
+
 type JWTService interface {
-	Issue(accountID int64) (string, error)
+	Issue(accountID int64, tokenVersion int) (string, error)
 }
 
 type Clock interface {
