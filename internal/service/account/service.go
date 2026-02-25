@@ -40,6 +40,7 @@ func (s *Service) Register(ctx context.Context, login, password string) error {
 	account := &account_d.Account{
 		Login:        login,
 		PasswordHash: string(hash),
+		TokenVersion: 0,
 		Role:         "user",
 		CreatedAt:    now,
 		UpdatedAt:    now,
