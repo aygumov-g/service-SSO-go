@@ -41,39 +41,6 @@ func (r *Repository) Create(ctx context.Context, session *session_d.Session) err
 	)
 }
 
-func (r *Repository) GetByTokenHash(ctx context.Context, hash string) (*session_d.Session, error) {
-	row := r.db.QueryRow(
-		ctx,
-		`
-		SELECT
-			id,
-			account_id,
-			token_hash,
-			expires_at,
-			created_at,
-			revoked_at
-		FROM refresh_tokens
-		WHERE
-			token_hash = $1
-		`,
-		hash,
-	)
-
-	s := &session_d.Session{}
-	if err := row.Scan(
-		&s.ID,
-		&s.AccountID,
-		&s.TokenHash,
-		&s.ExpiresAt,
-		&s.CreatedAt,
-		&s.RevokedAt,
-	); err != nil {
-		return nil, err
-	}
-
-	return s, nil
-}
-
 func (r *Repository) RevokeAllByAccountID(ctx context.Context, id int64, now time.Time) error {
 	_, err := r.db.Exec(
 		ctx,
