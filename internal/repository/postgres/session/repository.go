@@ -5,7 +5,6 @@ import (
 	"time"
 
 	session_d "github.com/aygumov-g/service-SSO-go/internal/domain/session"
-	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -59,36 +58,35 @@ func (r *Repository) RevokeAllByAccountID(ctx context.Context, id int64, now tim
 	return err
 }
 
-func (r *Repository) RotateByTokenHash(ctx context.Context, hash string, session *session_d.Session, now time.Time) (int64, error) {
+func (r *Repository) RotateByTokenHash(ctx context.Context, hash string, session *session_d.Session, now time.Time) (int64, int, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback(ctx)
-		}
-	}()
+	defer tx.Rollback(ctx)
 
 	var (
-		sessionID int64
-		accountID int64
-		expiresAt time.Time
-		revokedAt *time.Time
+		sessionID    int64
+		accountID    int64
+		tokenVersion int
+		expiresAt    time.Time
+		revokedAt    *time.Time
 	)
 
 	err = tx.QueryRow(
 		ctx,
 		`
 		SELECT
-			id,
-			account_id,
-			expires_at,
-			revoked_at
-		FROM refresh_tokens
+			rt.id,
+			rt.account_id,
+			rt.expires_at,
+			rt.revoked_at,
+			a.token_version
+		FROM refresh_tokens rt
+		JOIN accounts a ON a.id = rt.account_id
 		WHERE
-			token_hash = $1
-		FOR UPDATE
+			rt.token_hash = $1
+		FOR UPDATE OF rt
 		`,
 		hash,
 	).Scan(
@@ -96,18 +94,19 @@ func (r *Repository) RotateByTokenHash(ctx context.Context, hash string, session
 		&accountID,
 		&expiresAt,
 		&revokedAt,
+		&tokenVersion,
 	)
 
 	if err != nil {
-		return 0, session_srv.ErrInvalidRefreshToken
+		return 0, 0, session_d.ErrNotFound
 	}
 
 	if revokedAt != nil {
-		return 0, session_srv.ErrInvalidRefreshToken
+		return 0, 0, session_d.ErrRevoked
 	}
 
 	if expiresAt.Before(now) {
-		return 0, session_srv.ErrInvalidRefreshToken
+		return 0, 0, session_d.ErrExpired
 	}
 
 	_, err = tx.Exec(
@@ -123,7 +122,7 @@ func (r *Repository) RotateByTokenHash(ctx context.Context, hash string, session
 		sessionID,
 	)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	err = tx.QueryRow(
@@ -147,14 +146,14 @@ func (r *Repository) RotateByTokenHash(ctx context.Context, hash string, session
 		&session.ID,
 	)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
+	if err = tx.Commit(ctx); err != nil {
+		return 0, 0, err
 	}
 
-	return accountID, nil
+	return accountID, tokenVersion, nil
 }
 
 func (r *Repository) DeleteExpired(ctx context.Context, now time.Time) error {

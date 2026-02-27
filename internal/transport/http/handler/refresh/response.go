@@ -1,7 +1,7 @@
 package refresh
 
 import (
-	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
+	refresh_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/refresh"
 )
 
 type refreshResponse struct {
@@ -9,7 +9,7 @@ type refreshResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func (r refreshResponse) toResponse(tokens *session_srv.TokenPair) refreshResponse {
+func (r refreshResponse) toResponse(tokens *refresh_uc.Result) refreshResponse {
 	return refreshResponse{
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,

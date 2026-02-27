@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
-	account_srv "github.com/aygumov-g/service-SSO-go/internal/service/account"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -50,7 +49,7 @@ func (r *Repository) GetByLogin(ctx context.Context, login string) (*account_d.A
 		&account.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, account_srv.ErrAccountNotFound
+			return nil, account_d.ErrAccountNotFound
 		}
 
 		return nil, err
@@ -89,7 +88,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*account_d.Account,
 		&account.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, account_srv.ErrAccountNotFound
+			return nil, account_d.ErrAccountNotFound
 		}
 
 		return nil, err
@@ -123,7 +122,7 @@ func (r *Repository) Create(ctx context.Context, account *account_d.Account) err
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			if pgErr.Code == "23505" {
-				return account_srv.ErrAccountAlreadyExists
+				return account_d.ErrAccountAlreadyExists
 			}
 		}
 

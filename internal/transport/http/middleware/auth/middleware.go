@@ -6,16 +6,16 @@ import (
 )
 
 type Middleware struct {
-	jwt      JWTService
+	get_meUC GetMeUsecase
 	identity IdentityHTTP
-	accounts AccountService
+	tokens   TokenProvider
 }
 
-func NewMiddleware(jwt JWTService, identity IdentityHTTP, accounts AccountService) *Middleware {
+func NewMiddleware(get_meUC GetMeUsecase, identity IdentityHTTP, tokens TokenProvider) *Middleware {
 	return &Middleware{
-		jwt:      jwt,
+		get_meUC: get_meUC,
 		identity: identity,
-		accounts: accounts,
+		tokens:   tokens,
 	}
 }
 
@@ -29,13 +29,14 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 
 		token := strings.TrimPrefix(h, "Bearer ")
 
-		identity, err := m.jwt.Parse(token)
+		identity, err := m.tokens.Parse(token)
 		if err != nil {
 			http.Error(w, "invalid access token", http.StatusUnauthorized)
 			return
 		}
 
-		if err = m.accounts.ValidateTokenVersion(r.Context(), identity); err != nil {
+		account, err := m.get_meUC.Execute(r.Context(), identity.ID)
+		if err != nil || account.TokenVersion != identity.TokenVersion {
 			http.Error(w, "invalid access token", http.StatusUnauthorized)
 			return
 		}

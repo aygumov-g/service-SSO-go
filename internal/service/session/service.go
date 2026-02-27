@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
@@ -10,96 +11,100 @@ import (
 
 type Service struct {
 	sessionsRepo SessionRepository
-	accountsRepo AccountRepository
-	jwt          JWTService
-	ttl          time.Duration
+	tokens       TokenProvider
 	clk          Clock
+	ttl          time.Duration
 }
 
 func NewService(
 	sessionsRepo SessionRepository,
-	accountsRepo AccountRepository,
-	jwt JWTService,
-	ttl time.Duration,
+	tokens TokenProvider,
 	clk Clock,
+	ttl time.Duration,
 ) *Service {
 	return &Service{
 		sessionsRepo: sessionsRepo,
-		accountsRepo: accountsRepo,
-		jwt:          jwt,
-		ttl:          ttl,
+		tokens:       tokens,
 		clk:          clk,
+		ttl:          ttl,
 	}
 }
 
-func (s *Service) Create(ctx context.Context, account *account_d.Account) (*TokenPair, error) {
+func (s *Service) Create(ctx context.Context, account *account_d.Account) (
+	string,
+	string,
+	error,
+) {
 	now := s.clk.Now()
 
-	session, refreshToken, err := s.buildSession(account.ID, now)
+	refreshToken, err := s.tokens.GenerateRefreshToken()
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
-
-	if err := s.sessionsRepo.Create(ctx, session); err != nil {
-		return nil, err
-	}
-
-	accessToken, err := s.issueAccess(account.ID, account.TokenVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	return &TokenPair{AccessToken: accessToken, RefreshToken: refreshToken}, nil
-}
-
-func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair, error) {
-	now := s.clk.Now()
-
-	newSession, newRefreshToken, err := s.buildSession(0, now)
-	if err != nil {
-		return nil, err
-	}
-
-	accountID, err := s.sessionsRepo.RotateByTokenHash(ctx, hashToken(refreshToken), newSession, now)
-	if err != nil {
-		return nil, err
-	}
-
-	account, err := s.accountsRepo.GetByID(ctx, accountID)
-	if err != nil {
-		return nil, err
-	}
-
-	accessToken, err := s.issueAccess(accountID, account.TokenVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	return &TokenPair{AccessToken: accessToken, RefreshToken: newRefreshToken}, nil
-}
-
-func (s *Service) RevokeAllByAccountID(ctx context.Context, id int64, now time.Time) error {
-	return s.sessionsRepo.RevokeAllByAccountID(ctx, id, now)
-}
-
-func (s *Service) buildSession(accountID int64, now time.Time) (*session_d.Session, string, error) {
-	refreshToken, err := generateRefreshToken()
-	if err != nil {
-		return nil, "", err
-	}
-
-	hash := hashToken(refreshToken)
 
 	session := &session_d.Session{
-		AccountID: accountID,
-		TokenHash: hash,
+		AccountID: account.ID,
+		TokenHash: s.tokens.HashRefreshToken(refreshToken),
 		ExpiresAt: now.Add(s.ttl),
 		CreatedAt: now,
 	}
 
-	return session, refreshToken, nil
+	if err := s.sessionsRepo.Create(ctx, session); err != nil {
+		return "", "", err
+	}
+
+	accessToken, err := s.tokens.IssueAccessToken(account.ID, account.TokenVersion)
+	if err != nil {
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
 }
 
-func (s *Service) issueAccess(accountID int64, tokenVersion int) (string, error) {
-	return s.jwt.Issue(accountID, tokenVersion)
+func (s *Service) Rotate(ctx context.Context, refreshToken string) (
+	int64,
+	string,
+	string,
+	error,
+) {
+	now := s.clk.Now()
+
+	oldHash := s.tokens.HashRefreshToken(refreshToken)
+
+	newRefreshToken, err := s.tokens.GenerateRefreshToken()
+	if err != nil {
+		return 0, "", "", err
+	}
+
+	newSession := &session_d.Session{
+		TokenHash: s.tokens.HashRefreshToken(newRefreshToken),
+		ExpiresAt: now.Add(s.ttl),
+		CreatedAt: now,
+	}
+
+	accountID, tokenVersion, err := s.sessionsRepo.RotateByTokenHash(
+		ctx,
+		oldHash,
+		newSession,
+		now,
+	)
+	if err != nil {
+		if errors.Is(err, session_d.ErrNotFound) ||
+			errors.Is(err, session_d.ErrExpired) ||
+			errors.Is(err, session_d.ErrRevoked) {
+
+			return 0, "", "", ErrInvalidRefreshToken
+		}
+	}
+
+	accessToken, err := s.tokens.IssueAccessToken(accountID, tokenVersion)
+	if err != nil {
+		return 0, "", "", err
+	}
+
+	return accountID, accessToken, newRefreshToken, nil
+}
+
+func (s *Service) RevokeAllByAccountID(ctx context.Context, id int64, now time.Time) error {
+	return s.sessionsRepo.RevokeAllByAccountID(ctx, id, now)
 }

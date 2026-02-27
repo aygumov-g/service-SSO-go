@@ -9,12 +9,12 @@ import (
 )
 
 type Handler struct {
-	sessions SessionService
+	refreshUC RefreshUsecase
 }
 
-func NewHandler(sessions SessionService) *Handler {
+func NewHandler(refreshUC RefreshUsecase) *Handler {
 	return &Handler{
-		sessions: sessions,
+		refreshUC: refreshUC,
 	}
 }
 
@@ -32,7 +32,7 @@ func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, err := h.sessions.Refresh(r.Context(), req.RefreshToken)
+	tokens, err := h.refreshUC.Execute(r.Context(), req.RefreshToken)
 	if err != nil {
 		switch {
 		case errors.Is(err, session_srv.ErrInvalidRefreshToken):

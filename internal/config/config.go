@@ -24,7 +24,7 @@ func Load() *Config {
 			dBName:     os.Getenv("POSTGRES_DB"),
 		},
 		JWT: JWT{
-			Secret: []byte(os.Getenv("JWT_SECRET")),
+			Secret: os.Getenv("JWT_SECRET"),
 			TTL:    ttl(os.Getenv("JWT_TTL")),
 		},
 		Refresh: Refresh{

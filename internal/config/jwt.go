@@ -3,6 +3,6 @@ package config
 import "time"
 
 type JWT struct {
-	Secret []byte
+	Secret string
 	TTL    time.Duration
 }

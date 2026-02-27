@@ -5,17 +5,17 @@ import (
 	"errors"
 	"net/http"
 
-	account_srv "github.com/aygumov-g/service-SSO-go/internal/service/account"
+	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 )
 
 type Handler struct {
-	accounts AccountService
+	get_meUC GetMeUsecase
 	identity IdentityHTTP
 }
 
-func NewHandler(accounts AccountService, identity IdentityHTTP) *Handler {
+func NewHandler(get_meUC GetMeUsecase, identity IdentityHTTP) *Handler {
 	return &Handler{
-		accounts: accounts,
+		get_meUC: get_meUC,
 		identity: identity,
 	}
 }
@@ -34,10 +34,10 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account, err := h.accounts.GetByID(r.Context(), identity.ID)
+	account, err := h.get_meUC.Execute(r.Context(), identity.ID)
 	if err != nil {
 		switch {
-		case errors.Is(err, account_srv.ErrAccountNotFound):
+		case errors.Is(err, account_d.ErrAccountNotFound):
 			http.Error(w, "account not found", http.StatusConflict)
 		default:
 			http.Error(w, "internal error", http.StatusInternalServerError)

@@ -1,6 +1,6 @@
-package session
+package login
 
-type TokenPair struct {
+type Result struct {
 	AccessToken  string
 	RefreshToken string
 }

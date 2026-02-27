@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/aygumov-g/service-SSO-go/internal/config"
-	"github.com/aygumov-g/service-SSO-go/internal/repository/postgres"
+	"github.com/aygumov-g/service-SSO-go/internal/infrastructure/postgres"
 	"github.com/aygumov-g/service-SSO-go/internal/transport/http/server"
 	"github.com/aygumov-g/service-SSO-go/pkg/logger"
 )

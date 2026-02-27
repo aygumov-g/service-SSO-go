@@ -3,9 +3,9 @@ package login
 import (
 	"context"
 
-	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
+	login_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/login"
 )
 
-type AccountService interface {
-	Login(ctx context.Context, login, password string) (*session_srv.TokenPair, error)
+type LoginUsecase interface {
+	Execute(ctx context.Context, login, password string) (*login_uc.Result, error)
 }

@@ -7,8 +7,8 @@ import (
 	identity_d "github.com/aygumov-g/service-SSO-go/internal/domain/identity"
 )
 
-type AccountService interface {
-	GetByID(ctx context.Context, id int64) (*account_d.Account, error)
+type GetMeUsecase interface {
+	Execute(ctx context.Context, accountID int64) (*account_d.Account, error)
 }
 
 type IdentityHTTP interface {
