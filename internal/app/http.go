@@ -59,11 +59,11 @@ func buildHTTP(cfg *config.Config, db *pgxpool.Pool, log logger.Logger) *server.
 	loginHandler := login_handler.NewHandler(loginUsecase)
 
 	r := router.NewRouter()
-	r.Handle("/accounts/me", methodsMW.Handle([]string{http.MethodGet}, authMW.Handle(meHandler)))
-	r.Handle("/accounts/change_password", methodsMW.Handle([]string{http.MethodPost}, authMW.Handle(change_passwordHandler)))
-	r.Handle("/accounts/register", methodsMW.Handle([]string{http.MethodPost}, registerHandler))
-	r.Handle("/accounts/refresh", methodsMW.Handle([]string{http.MethodPost}, refreshHandler))
-	r.Handle("/accounts/login", methodsMW.Handle([]string{http.MethodPost}, loginHandler))
+	r.Handle("/auth/me", methodsMW.Handle([]string{http.MethodGet}, authMW.Handle(meHandler)))
+	r.Handle("/auth/change_password", methodsMW.Handle([]string{http.MethodPost}, authMW.Handle(change_passwordHandler)))
+	r.Handle("/auth/register", methodsMW.Handle([]string{http.MethodPost}, registerHandler))
+	r.Handle("/auth/refresh", methodsMW.Handle([]string{http.MethodPost}, refreshHandler))
+	r.Handle("/auth/login", methodsMW.Handle([]string{http.MethodPost}, loginHandler))
 
 	return server.NewServer(cfg.App.Port, r.Handler())
 }
