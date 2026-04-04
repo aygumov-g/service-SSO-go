@@ -1,7 +1,7 @@
-package login
+package token
 
 import (
-	login_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/login"
+	token_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/token"
 )
 
 type response struct {
@@ -9,7 +9,7 @@ type response struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func (r response) toResponse(tokens *login_uc.Output) response {
+func (r response) toResponse(tokens *token_uc.Output) response {
 	return response{
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,

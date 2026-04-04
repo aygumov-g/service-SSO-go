@@ -1,6 +1,6 @@
 package login
 
-type Result struct {
+type Output struct {
 	AccessToken  string
 	RefreshToken string
 }

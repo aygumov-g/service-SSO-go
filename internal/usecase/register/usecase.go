@@ -6,25 +6,25 @@ import (
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 )
 
-type Register struct {
+type Usecase struct {
 	accountsRepo AccountRepository
 	passwords    PasswordHasher
 	clk          Clock
 }
 
-func NewRegister(
+func NewUsecase(
 	accountsRepo AccountRepository,
 	passwords PasswordHasher,
 	clk Clock,
-) *Register {
-	return &Register{
+) *Usecase {
+	return &Usecase{
 		accountsRepo: accountsRepo,
 		passwords:    passwords,
 		clk:          clk,
 	}
 }
 
-func (uc *Register) Execute(ctx context.Context, login, password string) error {
+func (uc *Usecase) Execute(ctx context.Context, login, password string) error {
 	hash, err := uc.passwords.Hash(password)
 	if err != nil {
 		return err

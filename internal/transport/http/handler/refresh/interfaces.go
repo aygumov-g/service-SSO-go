@@ -7,5 +7,5 @@ import (
 )
 
 type RefreshUsecase interface {
-	Execute(ctx context.Context, refreshToken string) (*refresh_uc.Result, error)
+	Execute(ctx context.Context, refreshToken string) (*refresh_uc.Output, error)
 }

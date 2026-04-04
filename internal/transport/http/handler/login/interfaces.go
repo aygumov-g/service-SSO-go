@@ -7,5 +7,5 @@ import (
 )
 
 type LoginUsecase interface {
-	Execute(ctx context.Context, login, password string) (*login_uc.Result, error)
+	Execute(ctx context.Context, login, password string) (*login_uc.Output, error)
 }

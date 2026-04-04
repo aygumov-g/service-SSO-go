@@ -18,6 +18,7 @@ services:
     restart: always
   migrate:
     image: migrate/migrate
+    container_name: sso-migrate
     volumes:
       - ./migrations:/migrations
     command:
@@ -48,9 +49,6 @@ services:
       - REFRESH_TTL=$REFRESH_TTL
     ports:
       - "$APP_PORT:$APP_PORT"
-    networks:
-      - default
-      - messenger-system
     depends_on:
       service-sso-db:
         condition: service_healthy
@@ -60,7 +58,3 @@ services:
 
 volumes:
   pgdata-service-sso:
-
-networks:
-  messenger-system:
-    external: true

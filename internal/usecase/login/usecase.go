@@ -7,25 +7,25 @@ import (
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 )
 
-type Login struct {
+type Usecase struct {
 	accountsRepo AccountRepository
 	sessionsSrv  SessionService
 	passwords    PasswordHasher
 }
 
-func NewLogin(
+func NewUsecase(
 	accountsRepo AccountRepository,
 	sessionsSrv SessionService,
 	passwords PasswordHasher,
-) *Login {
-	return &Login{
+) *Usecase {
+	return &Usecase{
 		accountsRepo: accountsRepo,
 		sessionsSrv:  sessionsSrv,
 		passwords:    passwords,
 	}
 }
 
-func (uc *Login) Execute(ctx context.Context, login, password string) (*Result, error) {
+func (uc *Usecase) Execute(ctx context.Context, login, password string) (*Output, error) {
 	account, err := uc.accountsRepo.GetByLogin(ctx, login)
 	if err != nil {
 		if errors.Is(err, account_d.ErrAccountNotFound) {
@@ -46,5 +46,5 @@ func (uc *Login) Execute(ctx context.Context, login, password string) (*Result, 
 		return nil, err
 	}
 
-	return &Result{AccessToken: accessToken, RefreshToken: refreshToken}, nil
+	return &Output{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }

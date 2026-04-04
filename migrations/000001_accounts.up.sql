@@ -7,3 +7,5 @@ CREATE TABLE accounts (
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL
 );
+
+CREATE INDEX idx_accounts_login ON accounts(login);

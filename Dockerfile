@@ -3,9 +3,9 @@ WORKDIR /app
 COPY go.mod go.sum .
 RUN go mod download
 COPY . .
-RUN go build -o /app.f ./cmd/app/main.go
+RUN go build -o /bin/run ./cmd/app/main.go
 
 FROM alpine:3.18
 WORKDIR /app
-COPY --from=builder /app.f .
-ENTRYPOINT ["./app.f"]
+COPY --from=builder /bin/run .
+ENTRYPOINT ["./run"]

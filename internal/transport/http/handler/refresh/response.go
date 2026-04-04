@@ -4,13 +4,13 @@ import (
 	refresh_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/refresh"
 )
 
-type refreshResponse struct {
+type response struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }
 
-func (r refreshResponse) toResponse(tokens *refresh_uc.Result) refreshResponse {
-	return refreshResponse{
+func (r response) toResponse(tokens *refresh_uc.Output) response {
+	return response{
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,
 	}

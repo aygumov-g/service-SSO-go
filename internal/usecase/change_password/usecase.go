@@ -6,20 +6,20 @@ import (
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 )
 
-type ChangePassword struct {
+type Usecase struct {
 	accountsRepo AccountRepository
 	sessionsSrv  SessionService
 	passwords    PasswordHasher
 	clk          Clock
 }
 
-func NewChangePassword(
+func NewUsecase(
 	accountsRepo AccountRepository,
 	sessionsSrv SessionService,
 	passwords PasswordHasher,
 	clk Clock,
-) *ChangePassword {
-	return &ChangePassword{
+) *Usecase {
+	return &Usecase{
 		accountsRepo: accountsRepo,
 		sessionsSrv:  sessionsSrv,
 		passwords:    passwords,
@@ -27,7 +27,7 @@ func NewChangePassword(
 	}
 }
 
-func (uc *ChangePassword) Execute(ctx context.Context, id int64, oldPassword, newPassword string) error {
+func (uc *Usecase) Execute(ctx context.Context, id int64, oldPassword, newPassword string) error {
 	account, err := uc.accountsRepo.GetByID(ctx, id)
 	if err != nil {
 		return err

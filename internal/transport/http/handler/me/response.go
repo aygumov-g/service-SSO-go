@@ -1,25 +1,23 @@
 package me
 
 import (
-	"time"
-
 	d_account "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 )
 
-type accountResponse struct {
-	ID        int64     `json:"id"`
-	Login     string    `json:"login"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+type response struct {
+	ID        int64  `json:"id"`
+	Login     string `json:"login"`
+	Role      string `json:"role"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
 }
 
-func (r accountResponse) toResponse(a *d_account.Account) accountResponse {
-	return accountResponse{
+func (r response) toResponse(a *d_account.Account) response {
+	return response{
 		ID:        a.ID,
 		Login:     a.Login,
 		Role:      a.Role,
-		CreatedAt: a.CreatedAt,
-		UpdatedAt: a.UpdatedAt,
+		CreatedAt: a.CreatedAt.Unix(),
+		UpdatedAt: a.UpdatedAt.Unix(),
 	}
 }

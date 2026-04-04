@@ -4,27 +4,27 @@ import (
 	"context"
 )
 
-type Refresh struct {
+type Usecase struct {
 	accountsRepo AccountRepository
 	sessionsSrv  SessionService
 }
 
-func NewRefresh(
+func NewUsecase(
 	accountsRepo AccountRepository,
 	sessionsSrv SessionService,
-) *Refresh {
-	return &Refresh{
+) *Usecase {
+	return &Usecase{
 		accountsRepo: accountsRepo,
 		sessionsSrv:  sessionsSrv,
 	}
 }
 
-func (uc *Refresh) Execute(ctx context.Context, refreshToken string) (*Result, error) {
+func (uc *Usecase) Execute(ctx context.Context, refreshToken string) (*Output, error) {
 	_, accessToken, newRefreshToken, err := uc.sessionsSrv.Rotate(ctx, refreshToken)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Result{AccessToken: accessToken, RefreshToken: newRefreshToken}, nil
+	return &Output{AccessToken: accessToken, RefreshToken: newRefreshToken}, nil
 
 }
