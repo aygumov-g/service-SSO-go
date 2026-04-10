@@ -5,7 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
+	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
+	session_d "github.com/aygumov-g/service-SSO-go/internal/domain/session"
 )
 
 type Handler struct {
@@ -35,8 +36,14 @@ func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.refreshUC.Execute(r.Context(), req.RefreshToken)
 	if err != nil {
 		switch {
-		case errors.Is(err, session_srv.ErrInvalidRefreshToken):
-			http.Error(w, "invalid refresh token", http.StatusUnauthorized)
+		case errors.Is(err, session_d.ErrTokenNotFound):
+			http.Error(w, "refresh token not found", http.StatusNotFound)
+		case errors.Is(err, session_d.ErrTokenExpired):
+			http.Error(w, "refresh token expired", http.StatusBadRequest)
+		case errors.Is(err, session_d.ErrTokenRevoked):
+			http.Error(w, "refresh token revoked", http.StatusBadRequest)
+		case errors.Is(err, account_d.ErrAccountNotFound):
+			http.Error(w, "account not found", http.StatusNotFound)
 		default:
 			http.Error(w, "internal error", http.StatusInternalServerError)
 		}

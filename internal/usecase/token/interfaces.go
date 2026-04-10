@@ -7,7 +7,12 @@ import (
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 	authorization_code_d "github.com/aygumov-g/service-SSO-go/internal/domain/authorization_code"
 	oauth_client_d "github.com/aygumov-g/service-SSO-go/internal/domain/oauth_client"
+	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
 )
+
+type TxManager interface {
+	Do(ctx context.Context, fn func(ctx context.Context) error) error
+}
 
 type AuthorizationCodeRepository interface {
 	UseCode(ctx context.Context, code string) (*authorization_code_d.AuthorizationCode, error)
@@ -22,11 +27,7 @@ type AccountRepository interface {
 }
 
 type SessionService interface {
-	Create(ctx context.Context, account *account_d.Account) (
-		string,
-		string,
-		error,
-	)
+	Create(ctx context.Context, account *account_d.Account) (*session_srv.Output, error)
 }
 
 type TokenProvider interface {

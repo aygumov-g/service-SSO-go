@@ -20,11 +20,11 @@ func NewUsecase(
 }
 
 func (uc *Usecase) Execute(ctx context.Context, refreshToken string) (*Output, error) {
-	_, accessToken, newRefreshToken, err := uc.sessionsSrv.Rotate(ctx, refreshToken)
+	tokens, err := uc.sessionsSrv.Rotate(ctx, refreshToken)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Output{AccessToken: accessToken, RefreshToken: newRefreshToken}, nil
+	return &Output{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken}, nil
 
 }

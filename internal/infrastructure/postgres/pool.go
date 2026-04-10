@@ -5,11 +5,14 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type txKey struct{}
+
 type DB struct {
-	Pool *pgxpool.Pool
+	pool *pgxpool.Pool
 }
 
 func New(ctx context.Context, dsn string) (*DB, error) {
@@ -38,13 +41,36 @@ func New(ctx context.Context, dsn string) (*DB, error) {
 		return nil, err
 	}
 
-	return &DB{Pool: pool}, nil
+	return &DB{pool: pool}, nil
 }
 
-func (db *DB) Get() *pgxpool.Pool {
-	return db.Pool
+func (db *DB) GetPool() *pgxpool.Pool {
+	return db.pool
+}
+
+func (db *DB) Do(ctx context.Context, fn func(ctx context.Context) error) error {
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	txCtx := context.WithValue(ctx, txKey{}, tx)
+	if err := fn(txCtx); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (db *DB) ExtractTx(ctx context.Context) pgx.Tx {
+	if tx, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
+		return tx
+	}
+
+	return nil
 }
 
 func (db *DB) Close() {
-	db.Pool.Close()
+	db.pool.Close()
 }

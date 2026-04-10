@@ -2,23 +2,24 @@ package session
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	session_d "github.com/aygumov-g/service-SSO-go/internal/domain/session"
-
-	"github.com/jackc/pgx/v5/pgxpool"
+	postgres_db "github.com/aygumov-g/service-SSO-go/internal/infrastructure/postgres"
+	"github.com/jackc/pgx/v5"
 )
 
 type Repository struct {
-	db *pgxpool.Pool
+	db *postgres_db.DB
 }
 
-func NewRepository(db *pgxpool.Pool) *Repository {
+func NewRepository(db *postgres_db.DB) *Repository {
 	return &Repository{db: db}
 }
 
 func (r *Repository) Create(ctx context.Context, session *session_d.Session) error {
-	return r.db.QueryRow(
+	return r.get(ctx).QueryRow(
 		ctx,
 		`
 		INSERT INTO refresh_tokens (
@@ -40,8 +41,76 @@ func (r *Repository) Create(ctx context.Context, session *session_d.Session) err
 	)
 }
 
-func (r *Repository) RevokeAllByAccountID(ctx context.Context, id int64, now time.Time) error {
-	_, err := r.db.Exec(
+func (r *Repository) GetAccoundIDByHash(ctx context.Context, hash string) (int64, error) {
+	row := r.get(ctx).QueryRow(
+		ctx,
+		`
+		SELECT
+			account_id,
+			expires_at,
+			revoked_at
+		FROM refresh_tokens
+		WHERE
+			token_hash = $1
+		`,
+		hash,
+	)
+
+	var (
+		accountID int64
+		expiresAt time.Time
+		revokedAt *time.Time
+	)
+
+	if err := row.Scan(
+		&accountID,
+		&expiresAt,
+		&revokedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, session_d.ErrTokenNotFound
+		}
+
+		return 0, err
+	}
+
+	if revokedAt != nil {
+		return 0, session_d.ErrTokenRevoked
+	}
+
+	if time.Now().After(expiresAt) {
+		return 0, session_d.ErrTokenExpired
+	}
+
+	return accountID, nil
+}
+
+func (r *Repository) RevokeByTokenHash(ctx context.Context, hash string, now time.Time) error {
+	tag, err := r.get(ctx).Exec(
+		ctx,
+		`
+		UPDATE refresh_tokens
+		SET
+			revoked_at = $1
+		WHERE
+			token_hash = $2
+			AND revoked_at is NULL
+		`,
+		now,
+		hash,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return session_d.ErrTokenNotFound
+	}
+
+	return nil
+}
+
+func (r *Repository) RevokeAllByAccountID(ctx context.Context, accountID int64, now time.Time) error {
+	tag, err := r.get(ctx).Exec(
 		ctx,
 		`
 		UPDATE refresh_tokens
@@ -52,120 +121,36 @@ func (r *Repository) RevokeAllByAccountID(ctx context.Context, id int64, now tim
 			AND revoked_at is NULL
 		`,
 		now,
-		id,
-	)
-
-	return err
-}
-
-func (r *Repository) RotateByTokenHash(ctx context.Context, hash string, session *session_d.Session, now time.Time) (int64, int, error) {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return 0, 0, err
-	}
-	defer tx.Rollback(ctx)
-
-	var (
-		sessionID    int64
-		accountID    int64
-		tokenVersion int
-		expiresAt    time.Time
-		revokedAt    *time.Time
-	)
-
-	err = tx.QueryRow(
-		ctx,
-		`
-		SELECT
-			rt.id,
-			rt.account_id,
-			rt.expires_at,
-			rt.revoked_at,
-			a.token_version
-		FROM refresh_tokens rt
-		JOIN accounts a ON a.id = rt.account_id
-		WHERE
-			rt.token_hash = $1
-		FOR UPDATE OF rt
-		`,
-		hash,
-	).Scan(
-		&sessionID,
-		&accountID,
-		&expiresAt,
-		&revokedAt,
-		&tokenVersion,
-	)
-
-	if err != nil {
-		return 0, 0, session_d.ErrNotFound
-	}
-
-	if revokedAt != nil {
-		return 0, 0, session_d.ErrRevoked
-	}
-
-	if expiresAt.Before(now) {
-		return 0, 0, session_d.ErrExpired
-	}
-
-	_, err = tx.Exec(
-		ctx,
-		`
-		UPDATE refresh_tokens
-		SET
-			revoked_at = $1
-		WHERE
-			id = $2
-		`,
-		now,
-		sessionID,
-	)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	err = tx.QueryRow(
-		ctx,
-		`
-		INSERT INTO refresh_tokens (
-			account_id,
-			token_hash,
-			expires_at,
-			created_at
-		)
-		VALUES ($1, $2, $3, $4)
-		RETURNING
-			id
-		`,
 		accountID,
-		session.TokenHash,
-		session.ExpiresAt,
-		session.CreatedAt,
-	).Scan(
-		&session.ID,
 	)
 	if err != nil {
-		return 0, 0, err
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return session_d.ErrTokenNotFound
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		return 0, 0, err
-	}
-
-	return accountID, tokenVersion, nil
+	return nil
 }
 
-func (r *Repository) DeleteExpired(ctx context.Context, now time.Time) error {
-	_, err := r.db.Exec(
-		ctx,
-		`
-		DELETE FROM refresh_tokens
-		WHERE
-			expires_at < $1
-		`,
-		now,
-	)
+// func (r *Repository) DeleteExpired(ctx context.Context, now time.Time) error {
+// 	_, err := r.getter(ctx).Exec(
+// 		ctx,
+// 		`
+// 		DELETE FROM refresh_tokens
+// 		WHERE
+// 			expires_at < $1
+// 		`,
+// 		now,
+// 	)
 
-	return err
+// 	return err
+// }
+
+func (r *Repository) get(ctx context.Context) dbtx {
+	if tx := r.db.ExtractTx(ctx); tx != nil {
+		return tx
+	}
+
+	return r.db.GetPool()
 }

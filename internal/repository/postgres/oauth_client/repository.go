@@ -1,25 +1,25 @@
-package authorization_code
+package oauth_client
 
 import (
 	"context"
 	"errors"
 
 	oauth_client_d "github.com/aygumov-g/service-SSO-go/internal/domain/oauth_client"
+	postgres_db "github.com/aygumov-g/service-SSO-go/internal/infrastructure/postgres"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Repository struct {
-	db *pgxpool.Pool
+	db *postgres_db.DB
 }
 
-func NewRepository(db *pgxpool.Pool) *Repository {
+func NewRepository(db *postgres_db.DB) *Repository {
 	return &Repository{db: db}
 }
 
 func (r *Repository) GetByClientID(ctx context.Context, clientID string) (*oauth_client_d.OAuthClient, error) {
-	row := r.db.QueryRow(
+	row := r.get(ctx).QueryRow(
 		ctx,
 		`
 		SELECT
@@ -51,4 +51,12 @@ func (r *Repository) GetByClientID(ctx context.Context, clientID string) (*oauth
 	}
 
 	return &oauth_client, nil
+}
+
+func (r *Repository) get(ctx context.Context) dbtx {
+	if tx := r.db.ExtractTx(ctx); tx != nil {
+		return tx
+	}
+
+	return r.db.GetPool()
 }

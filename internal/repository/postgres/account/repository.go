@@ -5,61 +5,57 @@ import (
 	"errors"
 
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
+	postgres_db "github.com/aygumov-g/service-SSO-go/internal/infrastructure/postgres"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Repository struct {
-	db *pgxpool.Pool
+	db *postgres_db.DB
 }
 
-func NewRepository(db *pgxpool.Pool) *Repository {
+func NewRepository(db *postgres_db.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) GetByLogin(ctx context.Context, login string) (*account_d.Account, error) {
-	row := r.db.QueryRow(
+func (r *Repository) Create(ctx context.Context, account *account_d.Account) error {
+	_, err := r.get(ctx).Exec(
 		ctx,
 		`
-		SELECT
-			id,
+		INSERT INTO accounts (
 			login,
 			password_hash,
 			token_version,
 			role,
 			created_at,
 			updated_at
-		FROM accounts
-		WHERE
-			login = $1
+		)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		`,
-		login,
+		account.Login,
+		account.PasswordHash,
+		account.TokenVersion,
+		account.Role,
+		account.CreatedAt,
+		account.UpdatedAt,
 	)
 
-	var account account_d.Account
-	if err := row.Scan(
-		&account.ID,
-		&account.Login,
-		&account.PasswordHash,
-		&account.TokenVersion,
-		&account.Role,
-		&account.CreatedAt,
-		&account.UpdatedAt,
-	); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, account_d.ErrAccountNotFound
+	if err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok {
+			if pgErr.Code == "23505" {
+				return account_d.ErrAccountAlreadyExists
+			}
 		}
 
-		return nil, err
+		return err
 	}
 
-	return &account, nil
+	return nil
 }
 
 func (r *Repository) GetByID(ctx context.Context, id int64) (*account_d.Account, error) {
-	row := r.db.QueryRow(
+	row := r.get(ctx).QueryRow(
 		ctx,
 		`
 		SELECT
@@ -97,43 +93,47 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*account_d.Account,
 	return &account, nil
 }
 
-func (r *Repository) Create(ctx context.Context, account *account_d.Account) error {
-	_, err := r.db.Exec(
+func (r *Repository) GetByLogin(ctx context.Context, login string) (*account_d.Account, error) {
+	row := r.get(ctx).QueryRow(
 		ctx,
 		`
-		INSERT INTO accounts (
+		SELECT
+			id,
 			login,
 			password_hash,
 			token_version,
 			role,
 			created_at,
 			updated_at
-		)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		FROM accounts
+		WHERE
+			login = $1
 		`,
-		account.Login,
-		account.PasswordHash,
-		account.TokenVersion,
-		account.Role,
-		account.CreatedAt,
-		account.UpdatedAt,
+		login,
 	)
 
-	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok {
-			if pgErr.Code == "23505" {
-				return account_d.ErrAccountAlreadyExists
-			}
+	var account account_d.Account
+	if err := row.Scan(
+		&account.ID,
+		&account.Login,
+		&account.PasswordHash,
+		&account.TokenVersion,
+		&account.Role,
+		&account.CreatedAt,
+		&account.UpdatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, account_d.ErrAccountNotFound
 		}
 
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &account, nil
 }
 
 func (r *Repository) Update(ctx context.Context, account *account_d.Account) error {
-	_, err := r.db.Exec(
+	_, err := r.get(ctx).Exec(
 		ctx,
 		`
 		UPDATE accounts
@@ -153,4 +153,12 @@ func (r *Repository) Update(ctx context.Context, account *account_d.Account) err
 	)
 
 	return err
+}
+
+func (r *Repository) get(ctx context.Context) dbtx {
+	if tx := r.db.ExtractTx(ctx); tx != nil {
+		return tx
+	}
+
+	return r.db.GetPool()
 }

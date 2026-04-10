@@ -4,13 +4,23 @@ import (
 	"context"
 	"time"
 
+	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 	session_d "github.com/aygumov-g/service-SSO-go/internal/domain/session"
 )
 
+type TxManager interface {
+	Do(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 type SessionRepository interface {
 	Create(ctx context.Context, session *session_d.Session) error
-	RotateByTokenHash(ctx context.Context, token_hash string, session *session_d.Session, now time.Time) (int64, int, error)
-	RevokeAllByAccountID(ctx context.Context, account_id int64, now time.Time) error
+	GetAccoundIDByHash(ctx context.Context, hash string) (int64, error)
+	RevokeByTokenHash(ctx context.Context, hash string, now time.Time) error
+	RevokeAllByAccountID(ctx context.Context, accountID int64, now time.Time) error
+}
+
+type AccountRepository interface {
+	GetByID(ctx context.Context, id int64) (*account_d.Account, error)
 }
 
 type TokenProvider interface {

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
+	session_srv "github.com/aygumov-g/service-SSO-go/internal/service/session"
 )
 
 type AccountRepository interface {
@@ -11,10 +12,5 @@ type AccountRepository interface {
 }
 
 type SessionService interface {
-	Rotate(ctx context.Context, refresh_token string) (
-		int64,
-		string,
-		string,
-		error,
-	)
+	Rotate(ctx context.Context, refresh_token string) (*session_srv.Output, error)
 }

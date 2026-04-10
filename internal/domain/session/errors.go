@@ -3,7 +3,7 @@ package session
 import "errors"
 
 var (
-	ErrNotFound = errors.New("refresh not found")
-	ErrExpired  = errors.New("refresh expired")
-	ErrRevoked  = errors.New("refresh revoked")
+	ErrTokenNotFound = errors.New("refresh token not found")
+	ErrTokenExpired  = errors.New("refresh token expired")
+	ErrTokenRevoked  = errors.New("refresh token revoked")
 )
