@@ -35,7 +35,7 @@ services:
   service-sso-app-go:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-go
     image: aygumov-g/service-sso-app-go:latest
     container_name: sso-app-go
     environment:
@@ -54,7 +54,24 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:${APP_PORT}/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: always
+  service-sso-tests-python:
+    build:
+        context: .
+        dockerfile: Dockerfile-python
+    container_name: sso-tests-python
+    environment:
+      - APP_PORT=$APP_PORT
+      - APP_HOST=$APP_HOST
+    depends_on:
+      service-sso-app-go:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
   pgdata-service-sso:
