@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/aygumov-g/service-SSO-go/internal/config"
+	"github.com/aygumov-g/service-SSO-go/internal/infrastructure/health"
 	postgres_db "github.com/aygumov-g/service-SSO-go/internal/infrastructure/postgres"
 	"github.com/aygumov-g/service-SSO-go/internal/infrastructure/security/password"
 	"github.com/aygumov-g/service-SSO-go/internal/infrastructure/security/token"
@@ -17,6 +18,7 @@ import (
 	change_password_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/change_password"
 	login_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/login"
 	me_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/me"
+	ready_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/ready"
 	refresh_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/refresh"
 	register_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/register"
 	token_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/token"
@@ -29,6 +31,7 @@ import (
 	change_password_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/change_password"
 	get_me_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/get_me"
 	login_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/login"
+	ready_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/ready"
 	refresh_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/refresh"
 	register_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/register"
 	token_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/token"
@@ -45,12 +48,15 @@ type App struct {
 func NewApp(ctx context.Context) (*App, error) {
 	cfg := config.Load()
 	log := logger.New()
-	clk := clock.NewSystemClock()
 
 	db, err := postgres_db.New(ctx, cfg.DB.DSN())
 	if err != nil {
 		return nil, err
 	}
+
+	healthchecker := health.New(db)
+
+	clk := clock.NewSystemClock()
 
 	passwordHasher := password.NewBcryptHasher(12)
 	tokenProvider := token.NewJWTProvider(cfg.JWT.Secret, cfg.JWT.TTL, clk)
@@ -69,6 +75,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	refreshUsecase := refresh_uc.NewUsecase(accountRepo, sessionService)
 	loginUsecase := login_uc.NewUsecase(db, accountRepo, sessionService, passwordHasher)
 	getMeUsecase := get_me_uc.NewUsecase(accountRepo)
+	readyUsecase := ready_uc.NewUsecase(healthchecker)
 
 	authIdentity := auth_id.NewIdentity()
 
@@ -82,6 +89,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	refreshHandler := refresh_handler.NewHandler(refreshUsecase)
 	tokenHandler := token_handler.NewHandler(tokenUsecase)
 	loginHandler := login_handler.NewHandler(loginUsecase)
+	readyHandler := ready_handler.NewHandler(readyUsecase)
 
 	r := router.NewRouter()
 	r.Handle("/auth/me", methodsMW.Handle([]string{http.MethodGet}, authMW.Handle(meHandler)))
@@ -91,6 +99,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	r.Handle("/auth/login", methodsMW.Handle([]string{http.MethodPost}, loginHandler))
 	r.Handle("/oauth/authorize", methodsMW.Handle([]string{http.MethodGet}, authMW.Handle(authorizeHandler)))
 	r.Handle("/oauth/token", methodsMW.Handle([]string{http.MethodPost}, tokenHandler))
+	r.Handle("/health/ready", methodsMW.Handle([]string{http.MethodGet}, readyHandler))
 
 	s := server.NewServer(cfg.App.Port, r.Handler())
 
