@@ -1,0 +1,13 @@
+services:
+  service-sso-tests-python:
+    build:
+        context: .
+        dockerfile: Dockerfile-python
+    image: aygumov-g/service-sso-tests-python:latest
+    container_name: sso-tests-python
+    environment:
+      - HOST_PROJECT_PATH=${PWD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./tests:/src
+    restart: "no"

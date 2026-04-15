@@ -1,7 +1,7 @@
 services:
-  service-sso-db:
+  service-sso-db-postgres:
     image: postgres:17-alpine
-    container_name: sso-db
+    container_name: sso-db-postgres
     environment:
       - POSTGRES_DB=$POSTGRES_DB
       - POSTGRES_USER=$POSTGRES_USER
@@ -16,9 +16,9 @@ services:
       timeout: 5s
       retries: 5
     restart: always
-  migrate:
+  migrate-sso:
     image: migrate/migrate
-    container_name: sso-migrate
+    container_name: migrate-sso
     volumes:
       - ./migrations:/migrations
     command:
@@ -29,7 +29,7 @@ services:
         "up"
       ]
     depends_on:
-      service-sso-db:
+      service-sso-db-postgres:
         condition: service_healthy
     restart: "no"
   service-sso-app-go:
@@ -50,28 +50,10 @@ services:
     ports:
       - "$APP_PORT:$APP_PORT"
     depends_on:
-      service-sso-db:
+      service-sso-db-postgres:
         condition: service_healthy
-      migrate:
+      migrate-sso:
         condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:${APP_PORT}/health/ready"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: always
-  service-sso-tests-python:
-    build:
-        context: .
-        dockerfile: Dockerfile-python
-    container_name: sso-tests-python
-    environment:
-      - APP_PORT=$APP_PORT
-      - APP_HOST=$APP_HOST
-    depends_on:
-      service-sso-app-go:
-        condition: service_healthy
-    restart: "no"
 
 volumes:
   pgdata-service-sso:

@@ -8,4 +8,4 @@ FROM python:3.11-slim
 WORKDIR /src
 COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=build /src .
-CMD ["python", "-m", "pytest", "-v"]
+CMD ["python", "-m", "pytest", "-s", "-v"]

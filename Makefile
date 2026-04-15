@@ -1,8 +1,14 @@
+.PHONY: up down tests logs restart run
+
 up:
-	docker compose up -d --build --force-recreate
+	docker compose -f docker-compose.yml up -d --build --force-recreate
 
 down:
-	docker compose down
+	docker compose -f docker-compose.yml down
+
+tests:
+	docker compose -f docker-compose.yml build service-sso-app-go
+	docker compose -f docker-compose.tests.yml up
 
 logs:
 	docker compose logs -f

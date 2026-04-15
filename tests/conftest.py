@@ -1,30 +1,131 @@
-import os
-import random
-import string
-import pytest
+from testcontainers.postgres import PostgresContainer
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.network import Network
+
 import requests
+import psycopg2
+import pytest
+import time
+import os
 
-class APIClient:
-	def __init__(self, base_url):
-		self.base_url = base_url
-		self.session = requests.Session()
+@pytest.fixture(scope="session")
+def network():
+	with Network() as net:
+		yield net
 
-	def post(self, path, **kwargs):
-		return self.session.post(self.base_url + path, **kwargs)
+@pytest.fixture(scope="session")
+def postgres(network):
+	"""
+	Поднимаем чистую PostgreSQL для всех тестов.
+	"""
 
-	def get(self, path, **kwargs):
-		return self.session.post(self.base_url + path, **kwargs)
+	container = (
+		PostgresContainer("postgres:17-alpine")
+		.with_network(network)
+		.with_network_aliases("postgres")
+	)
 
-@pytest.fixture
-def client():
-	return APIClient("http://%(host)s:%(port)s" % {
-		"host": os.environ["APP_HOST"],
-		"port": os.environ["APP_PORT"],
-	})
+	with container as pg:
+		yield pg
 
-@pytest.fixture
-def test_user():
-	return {
-		"login": "".join([random.choice(string.ascii_letters + string.digits) for i in range(9)]),
-		"password": "12345",
-	}
+@pytest.fixture(scope="session")
+def migrated_for_postgres(network, postgres):
+	"""
+	Запускаем migrate/migrate контейнер и применяем миграции.
+	"""
+
+	timeout = 20
+	start = time.time()
+	last_error = None
+	while time.time() - start < timeout:
+		try:
+			conn = psycopg2.connect(
+				host=postgres.get_container_host_ip(),
+				port=postgres.get_exposed_port(5432),
+				user=postgres.username,
+				password=postgres.password,
+				dbname=postgres.dbname,
+			)
+			conn.close()
+			break
+		except Exception as e:
+			last_error = e
+		
+		time.sleep(0.5)
+
+	if last_error is not None:
+		raise Exception(
+			f"Migrated not ready after {timeout}s\n"
+			f"Last error: {last_error}\n\n"
+		)
+
+	host_path = os.getenv("HOST_PROJECT_PATH", os.path.abspath("."))
+	migrations_path = os.path.join(host_path, "migrations")
+	container = (
+		DockerContainer("migrate/migrate")
+		.with_network(network)
+		.with_volume_mapping(migrations_path, "/migrations")
+		.with_command([
+			"-path", "/migrations",
+			"-database", "postgres://%(user)s:%(pass)s@postgres:5432/%(db)s?sslmode=disable" % {
+				"user": postgres.username,
+				"pass": postgres.password,
+				"db": postgres.dbname,
+			},
+			"up",
+		])
+	)
+
+	with container as ct:
+		result = ct.get_wrapped_container().wait()
+		logs = ct.get_wrapped_container().logs().decode()
+		if result["StatusCode"] != 0:
+			print(logs)
+			raise Exception("Migration failed")
+
+
+	return postgres
+
+@pytest.fixture(scope="session")
+def app(network, migrated_for_postgres):
+	"""
+	Запускаем контейнер с копией основного go-сервиса. 
+	"""
+
+	container = (
+		DockerContainer("aygumov-g/service-sso-app-go")
+		.with_network(network)
+		.with_exposed_ports(8080)
+		.with_env("APP_PORT", "8080")
+		.with_env("POSTGRES_HOST", "postgres")
+		.with_env("POSTGRES_USER", migrated_for_postgres.username)
+		.with_env("POSTGRES_PASSWORD", migrated_for_postgres.password)
+		.with_env("POSTGRES_DB", migrated_for_postgres.dbname)
+		.with_env("JWT_SECRET", "secret")
+		.with_env("JWT_TTL", "5m")
+		.with_env("REFRESH_TTL", "170h")
+	)
+
+	with container as ct:
+		timeout = 20
+		start = time.time()
+		last_error = None
+		while time.time() - start < timeout:
+			try:
+				if requests.get(f"http://{ct.get_container_host_ip()}:{ct.get_exposed_port(8080)}/health/ready").status_code == 200:
+					last_error = None
+					break
+			except Exception as e:
+				last_error = e
+			
+			time.sleep(0.5)
+		
+		if last_error is not None:
+			logs = ct.get_wrapped_container().logs().decode()
+			raise Exception(
+				f"App not ready after {timeout}s\n"
+				f"Last error: {last_error}\n\n"
+				f"Container logs:\n{logs}"
+			)
+
+		yield ct
