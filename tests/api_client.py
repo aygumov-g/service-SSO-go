@@ -8,11 +8,6 @@ class APIClient:
 	def _url(self, path):
 		return f"{self.base_url}{path}"
 
-	def _headers(self, access_token):
-		return {
-			"Authorization": f"Bearer {access_token}"
-		}
-
 	def register(self, login, password):
 		return self.session.post(
 			url=self._url("/auth/register"),
@@ -31,6 +26,14 @@ class APIClient:
 			},
 		)
 	
+	def me(self, access_token):
+		return self.session.get(
+			url=self._url("/auth/me"),
+			headers={
+				"Authorization": f"Bearer {access_token}",
+			},
+		)
+
 	def change_password(self, access_token, old_password, new_password):
 		return self.session.post(
 			url=self._url("/auth/change_password"),
@@ -38,7 +41,15 @@ class APIClient:
 				"old_password": old_password,
 				"new_password": new_password,
 			},
-			headers=self._headers(
-				access_token=access_token,
-			)
+			headers={
+				"Authorization": f"Bearer {access_token}",
+			},
+		)
+
+	def refresh(self, refresh_token):
+		return self.session.post(
+			url=self._url("/auth/refresh"),
+			json={
+				"refresh_token": refresh_token,
+			},
 		)

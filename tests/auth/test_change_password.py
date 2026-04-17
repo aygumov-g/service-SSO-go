@@ -3,8 +3,7 @@ def test_change_password_successful(account):
 	В этом тесте проверяем успешную смену пароля.
 	"""
 
-	account.register().login().change_password().status_code_equals(204)
-	account.register().login().change_password().login().status_code_equals(200)
+	account.register().login().change_password().status_code_equals(204).login().status_code_equals(200)
 
 def test_change_password_unauthorized(account):
 	"""

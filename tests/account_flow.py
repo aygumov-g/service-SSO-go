@@ -8,7 +8,11 @@ class AccountFlow:
 		Тип uuid в логине всего-лишь ради примера, на практике именно он - не требуется.
 		Ключ "fake_password" вообще необязателен и не должен присутствовать в объекте
 		представления данных об аккаунте.
-		Это же касается ключей "new_password", "access_token", "refresh_token".
+		Это же касается ключей:
+			- "new_password",
+			- "access_token",
+			- "refresh_token",
+			- "old_refresh_token".
 		"""
 		self.account_data = {
 			"login": str(uuid.uuid4()),
@@ -17,6 +21,7 @@ class AccountFlow:
 			"new_password": "12",
 			"access_token": None,
 			"refresh_token": None,
+			"old_refresh_token": None,
 		}
 
 		"""
@@ -47,6 +52,13 @@ class AccountFlow:
 
 		return self
 
+	def me(self):
+		self.response = self.api.me(
+			access_token=self.account_data["access_token"],
+		)
+
+		return self
+
 	def change_password(self, same_error=False, is_fake_password=False):
 		self.response = self.api.change_password(
 			access_token=self.account_data["access_token"],
@@ -56,6 +68,20 @@ class AccountFlow:
 
 		if self.response.ok:
 			self.account_data["password"], self.account_data["new_password"] = self.account_data["new_password"], self.account_data["password"]
+
+		return self
+
+	def refresh(self, old_refresh=False):
+		self.response = self.api.refresh(
+			refresh_token=self.account_data["old_refresh_token"] if old_refresh else self.account_data["refresh_token"],
+		)
+
+		if self.response.ok:
+			data = self.response.json()
+
+			self.account_data["old_refresh_token"] = self.account_data["refresh_token"]
+			self.account_data["refresh_token"] = data.get("refresh_token")
+			self.account_data["access_token"] = data.get("access_token")
 
 		return self
 
