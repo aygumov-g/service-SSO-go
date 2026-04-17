@@ -9,7 +9,6 @@ import requests
 import psycopg2
 import pytest
 import time
-import uuid
 import os
 
 @pytest.fixture(scope="session")
