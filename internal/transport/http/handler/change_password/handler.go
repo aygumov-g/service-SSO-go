@@ -44,7 +44,7 @@ func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, account_d.ErrAccountNotFound):
-			http.Error(w, "account not found", http.StatusConflict)
+			http.Error(w, "account not found", http.StatusNotFound)
 		case errors.Is(err, account_d.ErrSamePassword):
 			http.Error(w, "new password must differ from old", http.StatusBadRequest)
 		case errors.Is(err, account_d.ErrInvalidCredentials):
