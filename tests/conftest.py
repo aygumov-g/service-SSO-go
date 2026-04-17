@@ -2,10 +2,14 @@ from testcontainers.postgres import PostgresContainer
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
 
+from api_client import APIClient
+from account_flow import AccountFlow
+
 import requests
 import psycopg2
 import pytest
 import time
+import uuid
 import os
 
 @pytest.fixture(scope="session")
@@ -55,8 +59,8 @@ def migrated_for_postgres(network, postgres):
 
 	if last_error is not None:
 		raise Exception(
-			f"Migrated not ready after {timeout}s\n"
-			f"Last error: {last_error}\n\n"
+			f"Postgres not ready after {timeout}s\n"
+			f"Last error: {last_error}\n"
 		)
 
 	host_path = os.getenv("HOST_PROJECT_PATH", os.path.abspath("."))
@@ -80,9 +84,10 @@ def migrated_for_postgres(network, postgres):
 		result = ct.get_wrapped_container().wait()
 		logs = ct.get_wrapped_container().logs().decode()
 		if result["StatusCode"] != 0:
-			print(logs)
-			raise Exception("Migration failed")
-
+			raise Exception(
+				"Migration failed\n"
+				f"Container logs:\n{logs}"
+			)
 
 	return postgres
 
@@ -120,8 +125,8 @@ def app(network, migrated_for_postgres):
 			
 			time.sleep(0.5)
 		
+		logs = ct.get_wrapped_container().logs().decode()
 		if last_error is not None:
-			logs = ct.get_wrapped_container().logs().decode()
 			raise Exception(
 				f"App not ready after {timeout}s\n"
 				f"Last error: {last_error}\n\n"
@@ -129,3 +134,9 @@ def app(network, migrated_for_postgres):
 			)
 
 		yield ct
+
+@pytest.fixture()
+def account(app):
+	return AccountFlow(
+		APIClient(f"http://{app.get_container_host_ip()}:{app.get_exposed_port(8080)}")
+	)

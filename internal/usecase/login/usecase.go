@@ -35,11 +35,9 @@ func (uc *Usecase) Execute(ctx context.Context, login, password string) (*Output
 		account, err := uc.accountsRepo.GetByLogin(txCtx, login)
 		if err != nil {
 			if errors.Is(err, account_d.ErrAccountNotFound) {
-				if err := uc.passwords.FakeCompareHash(password); err != nil {
-					return err
-				}
+				_ = uc.passwords.FakeCompareHash(password)
 
-				return account_d.ErrInvalidCredentials
+				return account_d.ErrAccountNotFound
 			}
 
 			return err
