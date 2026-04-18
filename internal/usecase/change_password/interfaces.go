@@ -7,6 +7,10 @@ import (
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
 )
 
+type TxManager interface {
+	Do(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 type AccountRepository interface {
 	GetByID(ctx context.Context, id int64) (*account_d.Account, error)
 	Update(ctx context.Context, account *account_d.Account) error

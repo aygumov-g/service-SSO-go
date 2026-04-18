@@ -7,6 +7,7 @@ import (
 )
 
 type Usecase struct {
+	tx           TxManager
 	accountsRepo AccountRepository
 	sessionsSrv  SessionService
 	passwords    PasswordHasher
@@ -14,12 +15,14 @@ type Usecase struct {
 }
 
 func NewUsecase(
+	tx TxManager,
 	accountsRepo AccountRepository,
 	sessionsSrv SessionService,
 	passwords PasswordHasher,
 	clk Clock,
 ) *Usecase {
 	return &Usecase{
+		tx:           tx,
 		accountsRepo: accountsRepo,
 		sessionsSrv:  sessionsSrv,
 		passwords:    passwords,
@@ -28,35 +31,41 @@ func NewUsecase(
 }
 
 func (uc *Usecase) Execute(ctx context.Context, id int64, oldPassword, newPassword string) error {
-	account, err := uc.accountsRepo.GetByID(ctx, id)
-	if err != nil {
-		return err
-	}
+	if err := uc.tx.Do(ctx, func(txCtx context.Context) error {
+		account, err := uc.accountsRepo.GetByID(txCtx, id)
+		if err != nil {
+			return err
+		}
 
-	if err := uc.passwords.CompareHash(account.PasswordHash, oldPassword); err != nil {
-		return account_d.ErrInvalidCredentials
-	}
+		if err := uc.passwords.CompareHash(account.PasswordHash, oldPassword); err != nil {
+			return account_d.ErrInvalidCredentials
+		}
 
-	if err := uc.passwords.CompareHash(account.PasswordHash, newPassword); err == nil {
-		return account_d.ErrSamePassword
-	}
+		if err := uc.passwords.CompareHash(account.PasswordHash, newPassword); err == nil {
+			return account_d.ErrSamePassword
+		}
 
-	hash, err := uc.passwords.Hash(newPassword)
-	if err != nil {
-		return err
-	}
+		hash, err := uc.passwords.Hash(newPassword)
+		if err != nil {
+			return err
+		}
 
-	now := uc.clk.Now()
+		now := uc.clk.Now()
 
-	account.TokenVersion++
-	account.PasswordHash = string(hash)
-	account.UpdatedAt = now
+		account.TokenVersion++
+		account.PasswordHash = string(hash)
+		account.UpdatedAt = now
 
-	if err := uc.accountsRepo.Update(ctx, account); err != nil {
-		return err
-	}
+		if err := uc.accountsRepo.Update(txCtx, account); err != nil {
+			return err
+		}
 
-	if err := uc.sessionsSrv.RevokeAllByAccountID(ctx, account.ID, now); err != nil {
+		if err := uc.sessionsSrv.RevokeAllByAccountID(txCtx, account.ID, now); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
 		return err
 	}
 

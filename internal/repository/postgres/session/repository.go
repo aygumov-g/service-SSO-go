@@ -107,7 +107,7 @@ func (r *Repository) RevokeByTokenHashIfExists(ctx context.Context, hash string,
 }
 
 func (r *Repository) RevokeAllByAccountID(ctx context.Context, accountID int64, now time.Time) error {
-	tag, err := r.get(ctx).Exec(
+	_, err := r.get(ctx).Exec(
 		ctx,
 		`
 		UPDATE refresh_tokens
@@ -122,11 +122,6 @@ func (r *Repository) RevokeAllByAccountID(ctx context.Context, accountID int64, 
 	)
 	if err != nil {
 		return err
-	}
-
-	// Пока не знаю. Потом более подробно изучить насчёт этого момента здесь.
-	if tag.RowsAffected() == 0 {
-		return session_d.ErrTokenNotFound
 	}
 
 	return nil

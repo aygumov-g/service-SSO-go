@@ -72,7 +72,7 @@ func NewApp(ctx context.Context) (*App, error) {
 
 	tokenUsecase := token_uc.NewUsecase(db, authorization_codeRepo, oauth_clientRepo, accountRepo, sessionService, tokenProvider, clk)
 	authorizeUsecase := authorize_uc.NewUsecase(authorization_codeRepo, oauth_clientRepo, tokenProvider, clk)
-	change_passwordUsecase := change_password_uc.NewUsecase(accountRepo, sessionService, passwordHasher, clk)
+	change_passwordUsecase := change_password_uc.NewUsecase(db, accountRepo, sessionService, passwordHasher, clk)
 	registerUsecase := register_uc.NewUsecase(accountRepo, passwordHasher, clk)
 	refreshUsecase := refresh_uc.NewUsecase(accountRepo, sessionService)
 	logoutUsecase := logout_uc.NewUsecase(sessionService)
