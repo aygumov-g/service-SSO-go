@@ -15,7 +15,8 @@ type TxManager interface {
 type SessionRepository interface {
 	Create(ctx context.Context, session *session_d.Session) error
 	GetAccoundIDByHash(ctx context.Context, hash string) (int64, error)
-	RevokeByTokenHash(ctx context.Context, hash string, now time.Time) error
+	RevokeByTokenHashStrict(ctx context.Context, hash string, now time.Time) error
+	RevokeByTokenHashIfExists(ctx context.Context, hash string, now time.Time) error
 	RevokeAllByAccountID(ctx context.Context, accountID int64, now time.Time) error
 }
 

@@ -84,6 +84,13 @@ class AccountFlow:
 			self.account_data["access_token"] = data.get("access_token")
 
 		return self
+	
+	def logout(self):
+		self.response = self.api.logout(
+			refresh_token=self.account_data["refresh_token"],
+		)
+
+		return self
 
 	def status_code_equals(self, code):
 		assert self.response != None and self.response.status_code == code, (

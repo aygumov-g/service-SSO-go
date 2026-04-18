@@ -17,6 +17,7 @@ import (
 	authorize_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/authorize"
 	change_password_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/change_password"
 	login_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/login"
+	logout_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/logout"
 	me_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/me"
 	ready_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/ready"
 	refresh_handler "github.com/aygumov-g/service-SSO-go/internal/transport/http/handler/refresh"
@@ -31,6 +32,7 @@ import (
 	change_password_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/change_password"
 	get_me_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/get_me"
 	login_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/login"
+	logout_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/logout"
 	ready_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/ready"
 	refresh_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/refresh"
 	register_uc "github.com/aygumov-g/service-SSO-go/internal/usecase/register"
@@ -73,6 +75,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	change_passwordUsecase := change_password_uc.NewUsecase(accountRepo, sessionService, passwordHasher, clk)
 	registerUsecase := register_uc.NewUsecase(accountRepo, passwordHasher, clk)
 	refreshUsecase := refresh_uc.NewUsecase(accountRepo, sessionService)
+	logoutUsecase := logout_uc.NewUsecase(sessionService)
 	loginUsecase := login_uc.NewUsecase(db, accountRepo, sessionService, passwordHasher)
 	getMeUsecase := get_me_uc.NewUsecase(accountRepo)
 	readyUsecase := ready_uc.NewUsecase(healthchecker)
@@ -87,6 +90,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	change_passwordHandler := change_password_handler.NewHandler(change_passwordUsecase, authIdentity)
 	registerHandler := register_handler.NewHandler(registerUsecase)
 	refreshHandler := refresh_handler.NewHandler(refreshUsecase)
+	logoutHandler := logout_handler.NewHandler(logoutUsecase)
 	tokenHandler := token_handler.NewHandler(tokenUsecase)
 	loginHandler := login_handler.NewHandler(loginUsecase)
 	readyHandler := ready_handler.NewHandler(readyUsecase)
@@ -96,6 +100,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	r.Handle("/auth/change_password", methodsMW.Handle([]string{http.MethodPost}, authMW.Handle(change_passwordHandler)))
 	r.Handle("/auth/register", methodsMW.Handle([]string{http.MethodPost}, registerHandler))
 	r.Handle("/auth/refresh", methodsMW.Handle([]string{http.MethodPost}, refreshHandler))
+	r.Handle("/auth/logout", methodsMW.Handle([]string{http.MethodPost}, logoutHandler))
 	r.Handle("/auth/login", methodsMW.Handle([]string{http.MethodPost}, loginHandler))
 	r.Handle("/oauth/authorize", methodsMW.Handle([]string{http.MethodGet}, authMW.Handle(authorizeHandler)))
 	r.Handle("/oauth/token", methodsMW.Handle([]string{http.MethodPost}, tokenHandler))

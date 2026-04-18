@@ -53,3 +53,11 @@ class APIClient:
 				"refresh_token": refresh_token,
 			},
 		)
+	
+	def logout(self, refresh_token):
+		return self.session.post(
+			url=self._url("/auth/logout"),
+			json={
+				"refresh_token": refresh_token,
+			},
+		)

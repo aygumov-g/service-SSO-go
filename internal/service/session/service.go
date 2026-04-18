@@ -83,7 +83,7 @@ func (s *Service) Rotate(ctx context.Context, refreshToken string) (*Output, err
 			return err
 		}
 
-		if err := s.sessionsRepo.RevokeByTokenHash(txCtx, oldHash, now); err != nil {
+		if err := s.sessionsRepo.RevokeByTokenHashStrict(txCtx, oldHash, now); err != nil {
 			return err
 		}
 
@@ -93,6 +93,13 @@ func (s *Service) Rotate(ctx context.Context, refreshToken string) (*Output, err
 	}
 
 	return tokens, nil
+}
+
+func (s *Service) Logout(ctx context.Context, refreshToken string) error {
+	now := s.clk.Now()
+	hash := s.tokens.HashRefreshToken(refreshToken)
+
+	return s.sessionsRepo.RevokeByTokenHashIfExists(ctx, hash, now)
 }
 
 func (s *Service) RevokeAllByAccountID(ctx context.Context, id int64, now time.Time) error {

@@ -3,7 +3,6 @@ package login
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	account_d "github.com/aygumov-g/service-SSO-go/internal/domain/account"
@@ -39,7 +38,6 @@ func (h *Handler) post(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, account_d.ErrInvalidCredentials) || errors.Is(err, account_d.ErrAccountNotFound):
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		default:
-			fmt.Println(err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 		}
 
